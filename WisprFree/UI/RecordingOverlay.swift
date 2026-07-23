@@ -94,8 +94,8 @@ struct RecordingOverlayView: View {
     @EnvironmentObject var appState: AppState
 
     private var showTextBox: Bool {
-        (appState.phase == .recording && AppSettings.current.liveTranscription)
-            || appState.phase == .confirming
+        // Only for live transcription — the grace window uses the pill alone.
+        appState.phase == .recording && AppSettings.current.liveTranscription
     }
 
     var body: some View {
@@ -114,9 +114,7 @@ struct TranscriptBox: View {
     @EnvironmentObject var appState: AppState
     private static let maxChars = 280
 
-    private var text: String {
-        appState.phase == .confirming ? appState.pendingText : appState.interimText
-    }
+    private var text: String { appState.interimText }
 
     private var display: String {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
