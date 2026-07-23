@@ -24,11 +24,11 @@ final class RecordingOverlayController {
         if panel == nil { panel = makePanel() }
         guard let panel else { return }
         let phase = AppState.shared.phase
-        // Wider/taller when there's text to show (live preview or grace window).
-        let wide = phase == .confirming
+        // Two-tier (taller/wider) when there's a text row: live preview or the
+        // grace window. Otherwise a compact single row.
+        let tiered = phase == .confirming
             || (phase == .recording && AppSettings.current.liveTranscription)
-        panel.setContentSize(NSSize(width: wide ? 460 : 250,
-                                    height: phase == .confirming ? 58 : 40))
+        panel.setContentSize(NSSize(width: tiered ? 460 : 250, height: tiered ? 62 : 40))
         position(panel)
         guard !panel.isVisible else { return }
         panel.alphaValue = 0
@@ -88,16 +88,21 @@ final class RecordingOverlayController {
 struct RecordingPill: View {
     @EnvironmentObject var appState: AppState
 
+    private var isLiveRecording: Bool {
+        appState.phase == .recording && AppSettings.current.liveTranscription
+    }
+
     var body: some View {
         Group {
-            if appState.phase == .confirming {
-                confirming
-            } else {
-                row
+            switch appState.phase {
+            case .confirming: confirming
+            case .recording where isLiveRecording: liveRecording
+            case .recording: simpleRow
+            default: processingRow
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, appState.phase == .confirming ? 9 : 8)
+        .padding(.vertical, isLiveRecording || appState.phase == .confirming ? 9 : 8)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.black.opacity(0.78))
@@ -110,27 +115,39 @@ struct RecordingPill: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Recording (waveform + optional live text) and processing (spinner).
-    private var row: some View {
+    /// Compact single row: red dot + waveform + ✕.
+    private var simpleRow: some View {
         HStack(spacing: 10) {
-            if appState.phase == .recording {
+            Circle().fill(.red).frame(width: 8, height: 8)
+            WaveformBars(level: appState.audioLevel)
+            Spacer(minLength: 0)
+            cancelButton
+        }
+    }
+
+    private var processingRow: some View {
+        HStack(spacing: 10) {
+            ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
+            Spacer(minLength: 0)
+            cancelButton
+        }
+    }
+
+    /// Two tiers: transcribed text on top, waveform + ✕ on the bottom.
+    private var liveRecording: some View {
+        VStack(spacing: 7) {
+            Text(appState.interimText.isEmpty ? "Listening…" : appState.interimText)
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(appState.interimText.isEmpty ? 0.5 : 0.95))
+                .lineLimit(1)
+                .truncationMode(.head)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 10) {
                 Circle().fill(.red).frame(width: 8, height: 8)
                 WaveformBars(level: appState.audioLevel)
-                if appState.interimText.isEmpty {
-                    Spacer(minLength: 0)
-                } else {
-                    Text(appState.interimText)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            } else {
-                ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
                 Spacer(minLength: 0)
+                cancelButton
             }
-            cancelButton
         }
     }
 
