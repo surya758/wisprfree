@@ -1,6 +1,5 @@
 import AVFoundation
 import AppKit
-import SwiftUI
 
 /// Orchestrates one dictation: record → transcribe → clean up → insert.
 @MainActor
@@ -80,10 +79,8 @@ final class DictationPipeline {
         AppState.shared.pendingText = text
         AppState.shared.confirmProgress = 1
         AppState.shared.phase = .confirming
-        // Let SwiftUI drain the bar smoothly over the whole window in one pass.
-        withAnimation(.linear(duration: delay)) {
-            AppState.shared.confirmProgress = 0
-        }
+        // The countdown bar animates itself from onAppear (see CountdownBar),
+        // once it's actually on screen — here we just wait out the window.
         try? await Task.sleep(for: .seconds(delay))
         return !Task.isCancelled
     }

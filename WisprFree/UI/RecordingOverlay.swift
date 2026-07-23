@@ -178,7 +178,7 @@ struct ControlPill: View {
             case .confirming:
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green).font(.system(size: 13))
-                countdownBar
+                CountdownBar()
                 cancelButton
             default:  // recording
                 Circle().fill(.red).frame(width: 8, height: 8)
@@ -196,17 +196,6 @@ struct ControlPill: View {
         )
     }
 
-    private var countdownBar: some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(.white.opacity(0.15))
-            GeometryReader { geo in
-                Capsule().fill(.white.opacity(0.55))
-                    .frame(width: geo.size.width * appState.confirmProgress)
-            }
-        }
-        .frame(width: 60, height: 4)
-    }
-
     private var cancelButton: some View {
         Button { appState.cancelDictation() } label: {
             Image(systemName: "xmark.circle.fill")
@@ -215,6 +204,29 @@ struct ControlPill: View {
         }
         .buttonStyle(.plain)
         .help("Cancel")
+    }
+}
+
+/// Draining countdown for the grace window. Animates from onAppear — i.e.
+/// once it's actually on screen — so the motion is always visible.
+struct CountdownBar: View {
+    @EnvironmentObject var appState: AppState
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(.white.opacity(0.15))
+            GeometryReader { geo in
+                Capsule().fill(.white.opacity(0.55))
+                    .frame(width: geo.size.width * appState.confirmProgress)
+            }
+        }
+        .frame(width: 60, height: 4)
+        .onAppear {
+            appState.confirmProgress = 1
+            withAnimation(.linear(duration: max(0.1, AppSettings.current.insertDelay))) {
+                appState.confirmProgress = 0
+            }
+        }
     }
 }
 
