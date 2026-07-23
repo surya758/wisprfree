@@ -47,12 +47,16 @@ final class DictationPipeline {
     private func startLivePreview() {
         AppState.shared.interimText = ""
         liveTask = Task { [stt, recorder] in
+            // Only transcribe the recent tail so each pass stays fast even on
+            // long dictations — the final transcription uses the full buffer.
+            let window = Int(AudioRecorder.targetSampleRate * 18)
             while !Task.isCancelled, recorder.isRecording {
-                try? await Task.sleep(for: .milliseconds(900))
+                try? await Task.sleep(for: .milliseconds(650))
                 guard !Task.isCancelled, recorder.isRecording else { break }
                 let snap = recorder.snapshot()
                 guard snap.count > Int(AudioRecorder.targetSampleRate * 0.3) else { continue }
-                if let text = try? await stt.transcribe(snap),
+                let recent = snap.count > window ? Array(snap.suffix(window)) : snap
+                if let text = try? await stt.transcribe(recent),
                    !text.isEmpty, !Task.isCancelled, recorder.isRecording {
                     AppState.shared.interimText = text
                 }
@@ -64,6 +68,26 @@ final class DictationPipeline {
         liveTask?.cancel()
         liveTask = nil
         AppState.shared.interimText = ""
+    }
+
+    /// Counts down the insert-delay grace period, updating the overlay.
+    /// Returns false if the dictation was cancelled during the window.
+    private func graceWindow(text: String) async -> Bool {
+        let delay = AppSettings.current.insertDelay
+        guard delay > 0 else { return !Task.isCancelled }
+
+        AppState.shared.pendingText = text
+        AppState.shared.confirmProgress = 1
+        AppState.shared.phase = .confirming
+
+        let tick = 0.05
+        let steps = max(1, Int((delay / tick).rounded()))
+        for i in 0...steps {
+            if Task.isCancelled { return false }
+            AppState.shared.confirmProgress = 1 - Double(i) / Double(steps)
+            try? await Task.sleep(for: .seconds(tick))
+        }
+        return !Task.isCancelled
     }
 
     func startRecording() {
@@ -146,6 +170,14 @@ final class DictationPipeline {
                     AppState.shared.phase = .idle
                     return
                 }
+
+                // Grace window: last chance to cancel (X / cancel key) before
+                // the text lands. Skipped when the delay is 0.
+                if !(await graceWindow(text: text)) {
+                    AppState.shared.phase = .idle
+                    return
+                }
+
                 HistoryStore.shared.add(text: text, raw: raw, mode: settings.mode)
                 StatsStore.shared.record(
                     text: text,

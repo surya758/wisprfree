@@ -45,6 +45,7 @@ final class AppState: ObservableObject {
         case loadingModel
         case recording
         case processing
+        case confirming   // grace window before insertion
         case error
 
         var symbolName: String {
@@ -53,6 +54,7 @@ final class AppState: ObservableObject {
             case .loadingModel: return "arrow.down.circle"
             case .recording: return "mic.fill"
             case .processing: return "ellipsis.circle"
+            case .confirming: return "checkmark.circle"
             case .error: return "mic.slash"
             }
         }
@@ -63,6 +65,7 @@ final class AppState: ObservableObject {
             case .loadingModel: return "Downloading speech model…"
             case .recording: return "Recording…"
             case .processing: return "Transcribing…"
+            case .confirming: return "Inserting…"
             case .error: return "Error — see below"
             }
         }
@@ -72,6 +75,10 @@ final class AppState: ObservableObject {
     @Published var audioLevel: Float = 0
     /// Interim transcription shown in the overlay while speaking (live mode).
     @Published var interimText: String = ""
+    /// Countdown [1→0] during the pre-insert grace window.
+    @Published var confirmProgress: Double = 1
+    /// The text about to be inserted, shown during the grace window.
+    @Published var pendingText: String = ""
     /// Fraction [0,1] of a model download in flight; nil when none.
     @Published var downloadProgress: Double?
     @Published var lastError: String?

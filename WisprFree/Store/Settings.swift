@@ -233,6 +233,12 @@ struct AppSettings {
         defaults.object(forKey: "liveTranscription") as? Bool ?? false
     }
 
+    /// Grace period (seconds) after transcription before the text is inserted,
+    /// during which it can still be cancelled. 0 = insert immediately.
+    var insertDelay: Double {
+        defaults.object(forKey: "insertDelay") as? Double ?? 0
+    }
+
     // MARK: Prompt overrides
 
     /// User-edited style prompt for a mode; nil = use the built-in default.

@@ -328,6 +328,7 @@ struct GeneralSettingsView: View {
     @AppStorage("fallbackToRaw") private var fallbackToRaw = true
     @AppStorage("insertionMethod") private var insertionMethod = InsertionMethod.paste.rawValue
     @AppStorage("liveTranscription") private var liveTranscription = false
+    @AppStorage("insertDelay") private var insertDelay = 0.0
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -342,6 +343,19 @@ struct GeneralSettingsView: View {
                 .pickerStyle(.inline)
                 Toggle("Insert raw transcript if the AI model is unavailable", isOn: $fallbackToRaw)
                 Toggle("Show live transcription while speaking", isOn: $liveTranscription)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("Cancel window before inserting")
+                        Spacer()
+                        Text(insertDelay == 0 ? "Off" : String(format: "%.1fs", insertDelay))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    Slider(value: $insertDelay, in: 0...5, step: 0.5)
+                    Text("After transcribing, wait this long — with a ✕ and countdown in the overlay — before the text is inserted, so you can cancel it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             MicrophoneSection()
