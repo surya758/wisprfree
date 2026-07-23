@@ -7,6 +7,7 @@ enum WisprError: LocalizedError {
     case recordingTooShort
     case auth(String)
     case gemini(String)
+    case llm(String)
     case accessibilityDenied
 
     var errorDescription: String? {
@@ -23,6 +24,8 @@ enum WisprError: LocalizedError {
             return "Google auth: \(detail)"
         case .gemini(let detail):
             return "Gemini: \(detail)"
+        case .llm(let detail):
+            return "LLM: \(detail)"
         case .accessibilityDenied:
             return "Accessibility access needed to type into other apps. Enable WisprFree in System Settings → Privacy & Security → Accessibility."
         }

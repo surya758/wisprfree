@@ -29,14 +29,14 @@ struct AboutView: View {
 
             Section("How it works") {
                 LabeledContent("Speech to text", value: "On-device (Parakeet / Whisper / Cohere)")
-                LabeledContent("Cleanup", value: "Gemini on Vertex AI")
+                LabeledContent("Cleanup", value: "Gemini (Vertex / API) or OpenAI-compatible")
                 LabeledContent("Insertion", value: "Pastes into the frontmost app")
             }
 
             Section("Built with") {
                 LabeledContent("FluidAudio", value: "Parakeet & Cohere CoreML runtimes")
                 LabeledContent("WhisperKit", value: "Whisper CoreML runtime")
-                LabeledContent("Google Vertex AI", value: "Gemini models")
+                LabeledContent("Google Vertex AI / Gemini API / OpenAI", value: "Cleanup models")
             }
 
             Section("Data") {

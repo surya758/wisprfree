@@ -10,8 +10,8 @@ enum DictationMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .parakeetGemini: return "Local model + Gemini cleanup"
-        case .directGemini: return "Audio directly to Gemini"
+        case .parakeetGemini: return "Local model + AI cleanup"
+        case .directGemini: return "Audio directly to the AI model"
         case .parakeetOnly: return "Local model only (raw, offline)"
         }
     }
@@ -124,6 +124,23 @@ enum ModelCatalog {
     ]
 }
 
+/// Where the cleanup LLM runs. New providers slot in here + LLMClientFactory.
+enum LLMProvider: String, CaseIterable, Identifiable {
+    case vertex
+    case geminiAPI
+    case openAI
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .vertex: return "Google Vertex AI (gcloud)"
+        case .geminiAPI: return "Google Gemini API (API key)"
+        case .openAI: return "OpenAI-compatible (API key)"
+        }
+    }
+}
+
 /// UserDefaults-backed settings, readable from any thread.
 struct AppSettings {
     static var current: AppSettings { AppSettings() }
@@ -149,6 +166,23 @@ struct AppSettings {
     var model: String {
         defaults.string(forKey: "geminiModel") ?? "gemini-3.5-flash-lite"
     }
+
+    // MARK: LLM provider
+
+    var llmProvider: LLMProvider {
+        LLMProvider(rawValue: defaults.string(forKey: "llmProvider") ?? "") ?? .vertex
+    }
+
+    var openaiModel: String {
+        defaults.string(forKey: "openaiModel") ?? "gpt-5-mini"
+    }
+
+    var openaiBaseURL: String {
+        defaults.string(forKey: "openaiBaseURL") ?? "https://api.openai.com/v1"
+    }
+
+    var geminiAPIKey: String? { KeychainStore.get("gemini-api-key") }
+    var openaiAPIKey: String? { KeychainStore.get("openai-api-key") }
 
     /// Which local speech-to-text model to use (id from SttCatalog).
     var sttModel: String {

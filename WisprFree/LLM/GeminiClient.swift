@@ -1,17 +1,24 @@
 import Foundation
 
-/// Calls Gemini on Vertex AI (generateContent) for two jobs:
-/// - cleaning up a Parakeet transcript (text in, text out)
-/// - transcribing + cleaning recorded audio in one shot (WAV in, text out)
-struct GeminiClient {
+/// Calls Gemini via Vertex AI (gcloud auth) or the Gemini API (API key) —
+/// same generateContent request shape, different endpoint and auth.
+struct GeminiClient: LLMClient {
+    enum Backend { case vertex, geminiAPI }
+
     let settings: AppSettings
+    let backend: Backend
 
     private var endpoint: URL {
-        let project = settings.gcpProject
-        let location = settings.gcpLocation
         let model = settings.model
-        let host = location == "global" ? "aiplatform.googleapis.com" : "\(location)-aiplatform.googleapis.com"
-        return URL(string: "https://\(host)/v1/projects/\(project)/locations/\(location)/publishers/google/models/\(model):generateContent")!
+        switch backend {
+        case .vertex:
+            let project = settings.gcpProject
+            let location = settings.gcpLocation
+            let host = location == "global" ? "aiplatform.googleapis.com" : "\(location)-aiplatform.googleapis.com"
+            return URL(string: "https://\(host)/v1/projects/\(project)/locations/\(location)/publishers/google/models/\(model):generateContent")!
+        case .geminiAPI:
+            return URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
+        }
     }
 
     func cleanUp(transcript: String, profile: DictationProfile, glossary: [DictionaryEntry]) async throws -> String {
@@ -60,11 +67,19 @@ struct GeminiClient {
     }
 
     private func send(_ body: [String: Any]) async throws -> String {
-        let token = try await GoogleAuth.shared.accessToken()
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.timeoutInterval = 60
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        switch backend {
+        case .vertex:
+            let token = try await GoogleAuth.shared.accessToken()
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        case .geminiAPI:
+            guard let key = settings.geminiAPIKey, !key.isEmpty else {
+                throw WisprError.auth("No Gemini API key. Add one in Settings → Models (aistudio.google.com → Get API key).")
+            }
+            request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+        }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

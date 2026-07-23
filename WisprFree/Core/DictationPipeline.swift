@@ -63,7 +63,7 @@ final class DictationPipeline {
             let settings = AppSettings.current
             let profile = settings.profile
             let glossary = profile.usesGlossary ? DictionaryStore.shared.entries : []
-            let gemini = GeminiClient(settings: settings)
+            let llm = LLMClientFactory.make(settings: settings)
             var raw = ""
 
             do {
@@ -73,7 +73,7 @@ final class DictationPipeline {
                     raw = try await stt.transcribe(samples)
                     text = raw
                 case .directGemini:
-                    text = try await gemini.transcribe(
+                    text = try await llm.transcribe(
                         wav: AudioRecorder.wavData(from: samples),
                         profile: profile,
                         glossary: glossary
@@ -85,10 +85,10 @@ final class DictationPipeline {
                         return
                     }
                     do {
-                        text = try await gemini.cleanUp(transcript: raw, profile: profile, glossary: glossary)
+                        text = try await llm.cleanUp(transcript: raw, profile: profile, glossary: glossary)
                     } catch where settings.fallbackToRaw {
                         // Offline or API failure: better raw text than lost dictation.
-                        notify("Gemini unavailable — inserted raw transcript",
+                        notify("AI model unavailable — inserted raw transcript",
                                detail: error.localizedDescription)
                         text = raw
                     }

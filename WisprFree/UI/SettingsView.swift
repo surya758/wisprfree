@@ -140,7 +140,7 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
-                Toggle("Insert raw transcript if Gemini is unavailable", isOn: $fallbackToRaw)
+                Toggle("Insert raw transcript if the AI model is unavailable", isOn: $fallbackToRaw)
             }
 
             Section("App") {
@@ -447,6 +447,9 @@ struct ModelSettingsView: View {
     @AppStorage("geminiModel") private var model = "gemini-3.5-flash-lite"
     @AppStorage("gcpProject") private var gcpProject = ""
     @AppStorage("gcpLocation") private var gcpLocation = "global"
+    @AppStorage("llmProvider") private var llmProvider = LLMProvider.vertex.rawValue
+    @AppStorage("openaiModel") private var openaiModel = "gpt-5-mini"
+    @AppStorage("openaiBaseURL") private var openaiBaseURL = "https://api.openai.com/v1"
 
     private static let customTag = "__custom__"
     @State private var customSelected = false
@@ -503,29 +506,79 @@ struct ModelSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Gemini (cleanup / direct transcription)") {
-                Picker("Model", selection: pickerSelection) {
-                    ForEach(ModelCatalog.known, id: \.self) { name in
-                        Text(name).tag(name)
+            Section("AI cleanup (LLM)") {
+                Picker("Provider", selection: $llmProvider) {
+                    ForEach(LLMProvider.allCases) { provider in
+                        Text(provider.label).tag(provider.rawValue)
                     }
-                    Text("Custom…").tag(Self.customTag)
                 }
-                if pickerSelection.wrappedValue == Self.customTag {
-                    TextField("Custom model ID", text: $model,
-                              prompt: Text("e.g. gemini-4.0-flash"))
-                }
-            }
 
-            Section("Vertex AI") {
-                TextField("GCP project", text: $gcpProject, prompt: Text("your-gcp-project-id"))
-                TextField("Location", text: $gcpLocation)
-                Text("Uses your gcloud Application Default Credentials (`gcloud auth application-default login`).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                switch LLMProvider(rawValue: llmProvider) ?? .vertex {
+                case .vertex:
+                    geminiModelPicker
+                    TextField("GCP project", text: $gcpProject, prompt: Text("your-gcp-project-id"))
+                    TextField("Location", text: $gcpLocation)
+                    Text("Uses your gcloud Application Default Credentials (`gcloud auth application-default login`).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                case .geminiAPI:
+                    APIKeyField(title: "Gemini API key", account: "gemini-api-key")
+                    geminiModelPicker
+                    Text("Free API key from aistudio.google.com → Get API key. Stored in your Keychain.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                case .openAI:
+                    APIKeyField(title: "API key", account: "openai-api-key")
+                    TextField("Base URL", text: $openaiBaseURL,
+                              prompt: Text("https://api.openai.com/v1"))
+                    TextField("Model", text: $openaiModel, prompt: Text("gpt-5-mini"))
+                    Text("Works with OpenAI or any compatible endpoint (OpenRouter, Groq, local Ollama…). Key stored in your Keychain. “Audio directly to the AI model” mode needs an audio-capable model (e.g. gpt-audio).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+    }
+
+    private var geminiModelPicker: some View {
+        Group {
+            Picker("Model", selection: pickerSelection) {
+                ForEach(ModelCatalog.known, id: \.self) { name in
+                    Text(name).tag(name)
+                }
+                Text("Custom…").tag(Self.customTag)
+            }
+            if pickerSelection.wrappedValue == Self.customTag {
+                TextField("Custom model ID", text: $model,
+                          prompt: Text("e.g. gemini-4.0-flash"))
+            }
+        }
+    }
+}
+
+/// SecureField backed by the Keychain — loads on appear, saves on change.
+struct APIKeyField: View {
+    let title: String
+    let account: String
+    @State private var key = ""
+    @State private var loaded = false
+
+    var body: some View {
+        SecureField(title, text: $key, prompt: Text("sk-…"))
+            .onAppear {
+                if !loaded {
+                    key = KeychainStore.get(account) ?? ""
+                    loaded = true
+                }
+            }
+            .onChange(of: key) { _, newValue in
+                guard loaded else { return }
+                KeychainStore.set(newValue, account: account)
+            }
     }
 }
 
