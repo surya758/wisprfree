@@ -7,6 +7,11 @@ final class DictationPipeline {
     private let recorder = AudioRecorder()
     private let stt = SttRouter()
     private var processing = false
+    private var processingTask: Task<Void, Never>?
+
+    /// True while recording or transcribing — used to decide whether the
+    /// cancel key should be captured.
+    var isBusy: Bool { recorder.isRecording || processing }
 
     /// Preloads the Parakeet model so first dictation is instant.
     func warmUp() async {
@@ -19,11 +24,16 @@ final class DictationPipeline {
         }
     }
 
-    /// Discards the current recording without transcribing.
-    func cancelRecording() {
-        guard recorder.isRecording else { return }
-        _ = recorder.stop()
-        AppState.shared.audioLevel = 0
+    /// Aborts whatever is in flight — the recording, or an in-progress
+    /// transcription/cleanup (which cancels the network request too).
+    func cancel() {
+        if recorder.isRecording {
+            _ = recorder.stop()
+            AppState.shared.audioLevel = 0
+        }
+        processingTask?.cancel()
+        processingTask = nil
+        processing = false
         AppState.shared.phase = .idle
     }
 
@@ -58,8 +68,8 @@ final class DictationPipeline {
 
         processing = true
         AppState.shared.phase = .processing
-        Task {
-            defer { processing = false }
+        processingTask = Task {
+            defer { processing = false; processingTask = nil }
             let settings = AppSettings.current
             let profile = settings.profile
             let glossary = profile.usesGlossary ? DictionaryStore.shared.entries : []
@@ -86,7 +96,7 @@ final class DictationPipeline {
                     }
                     do {
                         text = try await llm.cleanUp(transcript: raw, profile: profile, glossary: glossary)
-                    } catch where settings.fallbackToRaw {
+                    } catch where settings.fallbackToRaw && !Task.isCancelled {
                         // Offline or API failure: better raw text than lost dictation.
                         notify("AI model unavailable — inserted raw transcript",
                                detail: error.localizedDescription)
@@ -94,6 +104,11 @@ final class DictationPipeline {
                     }
                 }
 
+                // Cancelled mid-flight (cancel key / ✕): drop it silently.
+                if Task.isCancelled {
+                    AppState.shared.phase = .idle
+                    return
+                }
                 guard !text.isEmpty else {
                     AppState.shared.phase = .idle
                     return
@@ -108,6 +123,10 @@ final class DictationPipeline {
                 AppState.shared.phase = .idle
                 AppState.shared.lastError = nil
             } catch {
+                if Task.isCancelled {
+                    AppState.shared.phase = .idle
+                    return
+                }
                 // Never lose words: keep the raw transcript on the clipboard.
                 if !raw.isEmpty {
                     NSPasteboard.general.clearContents()

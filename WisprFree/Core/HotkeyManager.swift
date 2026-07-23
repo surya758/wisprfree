@@ -100,7 +100,7 @@ final class HotkeyManager {
                     down ? holdKeyPressed() : holdKeyReleased()
                 } else if down, toggle.isModifierAlone, keyCode == toggle.keyCode {
                     toggleAction()
-                } else if down, cancel.isModifierAlone, keyCode == cancel.keyCode, style != .none {
+                } else if down, cancel.isModifierAlone, keyCode == cancel.keyCode, pipeline.isBusy {
                     cancelAction()
                 }
 
@@ -119,7 +119,7 @@ final class HotkeyManager {
                     toggleAction()
                     return nil
                 }
-                if !cancel.isModifierAlone, cancel.matches(keyCode: keyCode, flags: flags), style != .none {
+                if !cancel.isModifierAlone, cancel.matches(keyCode: keyCode, flags: flags), pipeline.isBusy {
                     cancelAction()
                     return nil
                 }
@@ -184,6 +184,6 @@ final class HotkeyManager {
 
     private func cancelAction() {
         style = .none
-        pipeline.cancelRecording()
+        pipeline.cancel()
     }
 }

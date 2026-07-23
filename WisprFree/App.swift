@@ -92,9 +92,9 @@ final class AppState: ObservableObject {
         Task { await pipeline.warmUp() }
     }
 
-    /// Cancel from UI (overlay ✕): discard audio and reset key tracking.
+    /// Cancel from UI (overlay ✕): abort recording or processing and reset keys.
     func cancelDictation() {
-        pipeline.cancelRecording()
+        pipeline.cancel()
         hotkeys?.resetStyle()
     }
 }

@@ -102,6 +102,15 @@ struct RecordingPill: View {
                     .controlSize(.small)
                     .tint(.white)
                     .colorScheme(.dark)
+                Button {
+                    appState.cancelDictation()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                .buttonStyle(.plain)
+                .help("Cancel")
             }
         }
         .padding(.horizontal, 14)
