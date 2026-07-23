@@ -25,37 +25,24 @@ final class RecordingOverlayController {
             }
     }
 
-    private static let slide: CGFloat = 26
-    // Fixed panel; the content is bottom-anchored and grows upward inside it,
-    // so the window never resizes (which was causing the position jitter).
-    private static let panelSize = NSSize(width: 460, height: 200)
-
     private func show() {
         if panel == nil { panel = makePanel() }
         guard let panel else { return }
         position(panel)
         guard !panel.isVisible else { return }
-        // Slide up from below while fading in.
-        let target = panel.frame.origin
-        panel.setFrameOrigin(NSPoint(x: target.x, y: target.y - Self.slide))
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.24
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            context.duration = 0.18
             panel.animator().alphaValue = 1
-            panel.animator().setFrameOrigin(target)
         }
     }
 
     private func hide() {
         guard let panel, panel.isVisible else { return }
-        let origin = panel.frame.origin
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.22
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            context.duration = 0.18
             panel.animator().alphaValue = 0
-            panel.animator().setFrameOrigin(NSPoint(x: origin.x, y: origin.y - Self.slide))
         }, completionHandler: {
             panel.orderOut(nil)
         })
@@ -63,7 +50,7 @@ final class RecordingOverlayController {
 
     private func makePanel() -> NSPanel {
         let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 60),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -77,8 +64,18 @@ final class RecordingOverlayController {
         panel.ignoresMouseEvents = false
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        let hosting = NSHostingView(rootView: RecordingOverlayView().environmentObject(AppState.shared))
-        panel.contentView = hosting
+
+        // Auto-size the window to the SwiftUI content, and re-anchor its
+        // bottom edge on every resize so it never drifts.
+        let hosting = NSHostingController(rootView: RecordingOverlayView().environmentObject(AppState.shared))
+        hosting.sizingOptions = .preferredContentSize
+        panel.contentViewController = hosting
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification, object: panel, queue: .main
+        ) { [weak self, weak panel] _ in
+            guard let panel else { return }
+            MainActor.assumeIsolated { self?.position(panel) }
+        }
         return panel
     }
 
@@ -113,9 +110,6 @@ struct RecordingOverlayView: View {
             }
             ControlPill()
         }
-        // Bottom-anchor inside the fixed panel; the empty area above is
-        // transparent and passes clicks through.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 2)
     }
 }
