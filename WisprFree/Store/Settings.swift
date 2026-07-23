@@ -219,6 +219,11 @@ struct AppSettings {
         InsertionMethod(rawValue: defaults.string(forKey: "insertionMethod") ?? "") ?? .paste
     }
 
+    /// CoreAudio UID of the chosen mic; empty = system default.
+    var micDeviceUID: String {
+        defaults.string(forKey: "micDeviceUID") ?? ""
+    }
+
     // MARK: Prompt overrides
 
     /// User-edited style prompt for a mode; nil = use the built-in default.

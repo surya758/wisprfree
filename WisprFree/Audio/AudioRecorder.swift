@@ -21,6 +21,15 @@ final class AudioRecorder {
         samples.removeAll(keepingCapacity: true)
 
         let input = engine.inputNode
+        // Route to the user-chosen input device (empty = system default).
+        let uid = AppSettings.current.micDeviceUID
+        if !uid.isEmpty, let deviceID = AudioDevices.deviceID(forUID: uid),
+           let unit = input.audioUnit {
+            var id = deviceID
+            AudioUnitSetProperty(
+                unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global,
+                0, &id, UInt32(MemoryLayout<AudioDeviceID>.size))
+        }
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0 else {
             throw WisprError.noMicrophone

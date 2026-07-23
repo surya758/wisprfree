@@ -342,6 +342,8 @@ struct GeneralSettingsView: View {
                 Toggle("Insert raw transcript if the AI model is unavailable", isOn: $fallbackToRaw)
             }
 
+            MicrophoneSection()
+
             Section {
                 Picker("Output", selection: $insertionMethod) {
                     ForEach(InsertionMethod.allCases) { method in
@@ -376,6 +378,30 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+    }
+}
+
+/// Microphone picker — refreshes the device list when the picker appears.
+struct MicrophoneSection: View {
+    @AppStorage("micDeviceUID") private var micDeviceUID = ""
+    @State private var devices: [InputDevice] = []
+
+    var body: some View {
+        Section {
+            Picker("Microphone", selection: $micDeviceUID) {
+                Text("System Default").tag("")
+                ForEach(devices) { device in
+                    Text(device.name).tag(device.uid)
+                }
+                // Keep a previously-chosen device selectable even if unplugged.
+                if !micDeviceUID.isEmpty, !devices.contains(where: { $0.uid == micDeviceUID }) {
+                    Text("Selected device (unavailable)").tag(micDeviceUID)
+                }
+            }
+        } header: {
+            Text("Audio")
+        }
+        .onAppear { devices = AudioDevices.inputDevices() }
     }
 }
 
