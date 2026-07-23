@@ -36,7 +36,7 @@ struct AboutView: View {
                     .onChange(of: autoUpdate) { _, value in
                         updater.automaticallyChecks = value
                     }
-                HStack(alignment: .top) {
+                HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Check for updates")
                         Text(updater.lastCheckDescription.map { "Last checked \($0)" } ?? "Not checked yet")
