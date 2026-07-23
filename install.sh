@@ -3,6 +3,9 @@
 set -e
 cd "$(dirname "$0")"
 
+# Use the shared git hooks (Conventional Commits enforcement).
+git config core.hooksPath .githooks 2>/dev/null || true
+
 xcodegen
 xcodebuild -project WisprFree.xcodeproj -scheme WisprFree -configuration Release build | grep -E "error:|BUILD"
 

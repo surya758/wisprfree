@@ -56,6 +56,10 @@ brew install xcodegen   # once
 
 Requirements: Apple Silicon Mac, macOS 14+.
 
+Commits follow [Conventional Commits](https://www.conventionalcommits.org)
+(`feat:`, `fix:`, `chore:`, …); `install.sh` points git at the shared
+`.githooks` so the format is checked on commit.
+
 First launch walks you through everything: microphone + Accessibility permissions (Accessibility powers the hotkeys and typing into other apps), choosing an AI provider, and a test box to try your first dictation. Rerun it anytime from Settings → About → *Show Welcome Guide*.
 
 ## Where things live
