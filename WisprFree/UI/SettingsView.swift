@@ -1,0 +1,434 @@
+import SwiftUI
+import ServiceManagement
+
+// MARK: - Sidebar shell (System Settings-style)
+
+enum SettingsPane: String, CaseIterable, Identifiable {
+    case general, hotkeys, models, dictionary, history
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: return "General"
+        case .hotkeys: return "Hotkeys"
+        case .models: return "Models"
+        case .dictionary: return "Dictionary"
+        case .history: return "History"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .general: return "gearshape.fill"
+        case .hotkeys: return "keyboard.fill"
+        case .models: return "sparkles"
+        case .dictionary: return "character.book.closed.fill"
+        case .history: return "clock.fill"
+        }
+    }
+
+    var iconColor: Color {
+        switch self {
+        case .general: return .gray
+        case .hotkeys: return .indigo
+        case .models: return .purple
+        case .dictionary: return .orange
+        case .history: return .blue
+        }
+    }
+}
+
+struct SettingsView: View {
+    @State private var pane: SettingsPane? = .general
+
+    var body: some View {
+        NavigationSplitView {
+            List(SettingsPane.allCases, selection: $pane) { pane in
+                Label {
+                    Text(pane.title)
+                } icon: {
+                    Image(systemName: pane.icon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(pane.iconColor.gradient))
+                }
+                .tag(pane)
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(190)
+        } detail: {
+            Group {
+                switch pane ?? .general {
+                case .general: GeneralSettingsView()
+                case .hotkeys: HotkeySettingsView()
+                case .models: ModelSettingsView()
+                case .dictionary: DictionaryView()
+                case .history: HistoryView()
+                }
+            }
+            .navigationTitle((pane ?? .general).title)
+        }
+        .frame(width: 700, height: 480)
+    }
+}
+
+// MARK: - General
+
+struct GeneralSettingsView: View {
+    @AppStorage("mode") private var mode = DictationMode.parakeetGemini.rawValue
+    @AppStorage("fallbackToRaw") private var fallbackToRaw = true
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+
+    var body: some View {
+        Form {
+            Section("Dictation") {
+                Picker("Mode", selection: $mode) {
+                    ForEach(DictationMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.inline)
+                Toggle("Insert raw transcript if Gemini is unavailable", isOn: $fallbackToRaw)
+            }
+
+            Section("App") {
+                Toggle("Launch at login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, enable in
+                        do {
+                            if enable {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchAtLogin = SMAppService.mainApp.status == .enabled
+                        }
+                    }
+            }
+
+            PermissionsSection()
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - Hotkeys
+
+struct HotkeySettingsView: View {
+    // Bumped to force re-reading bindings after "Reset to Defaults".
+    @State private var reloadToken = 0
+
+    var body: some View {
+        Form {
+            Section {
+                HotkeyRecorderRow(
+                    title: "Push-to-talk",
+                    subtitle: "Hold to record, release to insert. Tapping it also stops hands-free.",
+                    defaultsKey: "holdBinding",
+                    fallback: .defaultHold
+                )
+                HotkeyRecorderRow(
+                    title: "Hands-free",
+                    subtitle: "Press to start recording, press again to stop and insert.",
+                    defaultsKey: "toggleBinding",
+                    fallback: .defaultToggle
+                )
+                HotkeyRecorderRow(
+                    title: "Cancel",
+                    subtitle: "Discard the current recording without inserting.",
+                    defaultsKey: "cancelBinding",
+                    fallback: .defaultCancel
+                )
+            } header: {
+                Text("Hotkeys")
+            } footer: {
+                Text("Click a key, then press the key or combination you want. Bare modifier keys (Fn, Right ⌘, …) and combinations like Fn+Space both work. Changes apply immediately.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .id(reloadToken)
+
+            Section {
+                Button("Reset to Defaults") {
+                    AppSettings.resetBindings()
+                    reloadToken += 1
+                }
+            }
+
+            if usesFn {
+                Section {
+                    Text("Using Fn: set System Settings → Keyboard → “Press 🌐 key to” = Do Nothing, so tapping Fn doesn't also open the emoji picker.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var usesFn: Bool {
+        _ = reloadToken
+        let settings = AppSettings.current
+        return [settings.holdBinding, settings.toggleBinding, settings.cancelBinding]
+            .contains { $0.flags & HotkeyBinding.fnMask != 0 || $0.keyCode == 63 }
+    }
+}
+
+/// Click-to-record hotkey field: captures the next key press (or bare
+/// modifier press-and-release) while active.
+struct HotkeyRecorderRow: View {
+    let title: String
+    let subtitle: String
+    let defaultsKey: String
+    let fallback: HotkeyBinding
+
+    @State private var binding: HotkeyBinding
+    @State private var isRecording = false
+    @State private var monitor: Any?
+    @State private var pendingModifier: Int?
+
+    init(title: String, subtitle: String, defaultsKey: String, fallback: HotkeyBinding) {
+        self.title = title
+        self.subtitle = subtitle
+        self.defaultsKey = defaultsKey
+        self.fallback = fallback
+        _binding = State(initialValue: AppSettings.current.binding(defaultsKey: defaultsKey, fallback: fallback))
+    }
+
+    var body: some View {
+        LabeledContent {
+            Button {
+                isRecording ? stopRecording() : startRecording()
+            } label: {
+                Text(isRecording ? "Press keys…" : binding.label)
+                    .frame(minWidth: 100)
+            }
+            .buttonStyle(.bordered)
+            .tint(isRecording ? Color.accentColor : nil)
+        } label: {
+            Text(title)
+            Text(subtitle)
+        }
+        .onDisappear { stopRecording() }
+    }
+
+    private func startRecording() {
+        isRecording = true
+        pendingModifier = nil
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            handle(event)
+            return nil  // swallow everything while recording
+        }
+    }
+
+    private func stopRecording() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+        isRecording = false
+    }
+
+    private func handle(_ event: NSEvent) {
+        let keyCode = Int(event.keyCode)
+        switch event.type {
+        case .keyDown:
+            let flags = UInt64(event.modifierFlags.rawValue)
+                & (HotkeyBinding.strictMask | HotkeyBinding.fnMask)
+            capture(HotkeyBinding(
+                keyCode: keyCode,
+                flags: flags,
+                label: KeyLabel.describe(keyCode: keyCode, flags: flags, event: event)
+            ))
+
+        case .flagsChanged:
+            guard let mask = HotkeyBinding.modifierMasks[keyCode] else { return }
+            let down = UInt64(event.modifierFlags.rawValue) & mask != 0
+            if down {
+                pendingModifier = keyCode
+            } else if pendingModifier == keyCode {
+                // Pressed and released alone → bind the bare modifier.
+                capture(HotkeyBinding(
+                    keyCode: keyCode,
+                    flags: mask,
+                    label: KeyLabel.modifierNames[keyCode] ?? "Key \(keyCode)"
+                ))
+            } else {
+                pendingModifier = nil
+            }
+
+        default:
+            break
+        }
+    }
+
+    private func capture(_ newBinding: HotkeyBinding) {
+        binding = newBinding
+        AppSettings.setBinding(newBinding, forKey: defaultsKey)
+        stopRecording()
+    }
+}
+
+/// Human-readable names for keycodes and modifier combos.
+enum KeyLabel {
+    static let modifierNames: [Int: String] = [
+        63: "Fn", 54: "Right ⌘", 55: "⌘", 58: "⌥", 61: "Right ⌥",
+        59: "⌃", 62: "Right ⌃", 56: "⇧", 60: "Right ⇧",
+    ]
+
+    static let specialNames: [Int: String] = [
+        49: "Space", 53: "Esc", 36: "Return", 48: "Tab", 51: "Delete", 117: "⌦",
+        123: "←", 124: "→", 125: "↓", 126: "↑",
+        115: "Home", 119: "End", 116: "Page Up", 121: "Page Down",
+        122: "F1", 120: "F2", 99: "F3", 118: "F4", 96: "F5", 97: "F6",
+        98: "F7", 100: "F8", 101: "F9", 109: "F10", 103: "F11", 111: "F12",
+        105: "F13", 107: "F14", 113: "F15", 106: "F16", 64: "F17", 79: "F18", 80: "F19",
+    ]
+
+    /// Keys where macOS sets the fn bit implicitly — don't show "Fn +" for them.
+    private static let fnImplicit: Set<Int> = [
+        123, 124, 125, 126, 115, 119, 116, 121, 117,
+        122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111,
+        105, 107, 113, 106, 64, 79, 80,
+    ]
+
+    static func describe(keyCode: Int, flags: UInt64, event: NSEvent) -> String {
+        var parts: [String] = []
+        if flags & HotkeyBinding.fnMask != 0, !fnImplicit.contains(keyCode) { parts.append("Fn") }
+        if flags & HotkeyBinding.controlMask != 0 { parts.append("⌃") }
+        if flags & HotkeyBinding.optionMask != 0 { parts.append("⌥") }
+        if flags & HotkeyBinding.shiftMask != 0 { parts.append("⇧") }
+        if flags & HotkeyBinding.commandMask != 0 { parts.append("⌘") }
+
+        let keyName = specialNames[keyCode]
+            ?? event.charactersIgnoringModifiers?.uppercased()
+            ?? "Key \(keyCode)"
+        parts.append(keyName)
+        return parts.joined(separator: " + ")
+    }
+}
+
+// MARK: - Models
+
+struct ModelSettingsView: View {
+    @EnvironmentObject var appState: AppState
+    @AppStorage("sttModel") private var sttModel = "parakeet-v2"
+    @AppStorage("geminiModel") private var model = "gemini-3.5-flash-lite"
+    @AppStorage("gcpProject") private var gcpProject = ""
+    @AppStorage("gcpLocation") private var gcpLocation = "global"
+
+    private static let customTag = "__custom__"
+    @State private var customSelected = false
+
+    private var pickerSelection: Binding<String> {
+        Binding(
+            get: {
+                (customSelected || !ModelCatalog.known.contains(model)) ? Self.customTag : model
+            },
+            set: { selected in
+                if selected == Self.customTag {
+                    customSelected = true
+                } else {
+                    customSelected = false
+                    model = selected
+                }
+            }
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Model", selection: $sttModel) {
+                    ForEach(SttCatalog.options) { option in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(option.label)
+                            Text(option.detail).font(.caption).foregroundStyle(.secondary)
+                        }
+                        .tag(option.id)
+                    }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+                .onChange(of: sttModel) { _, _ in
+                    // Download (if needed) and load the newly selected model.
+                    Task { await appState.pipeline.warmUp() }
+                }
+                if appState.phase == .loadingModel {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Downloading / loading model… (first download can be a few hundred MB)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Speech recognition (on-device)")
+            } footer: {
+                Text("Models are downloaded once and cached; switching back to a downloaded model is instant.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Gemini (cleanup / direct transcription)") {
+                Picker("Model", selection: pickerSelection) {
+                    ForEach(ModelCatalog.known, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                    Text("Custom…").tag(Self.customTag)
+                }
+                if pickerSelection.wrappedValue == Self.customTag {
+                    TextField("Custom model ID", text: $model,
+                              prompt: Text("e.g. gemini-4.0-flash"))
+                }
+            }
+
+            Section("Vertex AI") {
+                TextField("GCP project", text: $gcpProject)
+                TextField("Location", text: $gcpLocation)
+                Text("Uses your gcloud Application Default Credentials (`gcloud auth application-default login`).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - Permissions
+
+/// Live permission status — accessibility is required for the hotkeys AND
+/// for typing results into other apps, so surface its real state prominently.
+struct PermissionsSection: View {
+    @State private var accessibilityGranted = TextInserter.isAccessibilityTrusted
+    private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Section("Permissions") {
+            LabeledContent {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(accessibilityGranted ? .green : .red)
+                        .frame(width: 9, height: 9)
+                    Text(accessibilityGranted ? "Granted" : "Not granted")
+                }
+            } label: {
+                Text("Accessibility")
+                Text("Required for the hotkeys and for typing into other apps.")
+            }
+            if !accessibilityGranted {
+                Button("Open Accessibility Settings…") {
+                    TextInserter.ensureAccessibility()
+                    NSWorkspace.shared.open(URL(
+                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                }
+                Text("Enable WisprFree in the list (remove any old entry first with the − button, then add /Applications/WisprFree.app). Takes effect within a few seconds — no relaunch needed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .onReceive(timer) { _ in
+            accessibilityGranted = TextInserter.isAccessibilityTrusted
+        }
+    }
+}

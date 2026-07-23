@@ -1,0 +1,44 @@
+name: WisprFree
+options:
+  bundleIdPrefix: com.suryakant
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    from: 0.15.0
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit.git
+    from: 1.0.0
+
+targets:
+  WisprFree:
+    type: application
+    platform: macOS
+    sources:
+      - WisprFree
+    dependencies:
+      - package: FluidAudio
+      - package: WhisperKit
+    info:
+      path: WisprFree/Info.plist
+      properties:
+        LSUIElement: true
+        NSMicrophoneUsageDescription: "WisprFree uses the microphone to transcribe your dictation."
+        CFBundleDisplayName: WisprFree
+        CFBundleIconFile: AppIcon
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.suryakant.wisprfree
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: 6DWJVY53FT
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        DEAD_CODE_STRIPPING: YES
