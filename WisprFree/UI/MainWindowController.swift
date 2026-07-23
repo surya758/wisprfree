@@ -4,6 +4,10 @@ import SwiftUI
 /// The app's window (settings + dictionary + history). Menu-bar apps have no
 /// dock presence, so this is shown from the status menu and when the user
 /// "re-opens" the app from Spotlight/Raycast/Finder.
+///
+/// Styled like macOS System Settings: full-height sidebar with the traffic
+/// lights floating over it, no window title, no title-bar separator — the
+/// pane title lives in the detail toolbar.
 @MainActor
 final class MainWindowController {
     static let shared = MainWindowController()
@@ -13,16 +17,21 @@ final class MainWindowController {
         if window == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 860, height: 620),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
-            window.contentMinSize = NSSize(width: 740, height: 520)
             window.title = "WisprFree"
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.titlebarSeparatorStyle = .none
+            window.toolbarStyle = .unified
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(
+            window.contentMinSize = NSSize(width: 740, height: 520)
+            window.contentViewController = NSHostingController(
                 rootView: SettingsView().environmentObject(AppState.shared)
             )
+            window.setContentSize(NSSize(width: 860, height: 620))
             window.center()
             self.window = window
         }
