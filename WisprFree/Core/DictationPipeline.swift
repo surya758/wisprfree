@@ -50,6 +50,7 @@ final class DictationPipeline {
             do {
                 try recorder.start()
                 AppState.shared.phase = .recording
+                Sound.playStart()
             } catch {
                 fail(error.localizedDescription)
             }
@@ -65,6 +66,7 @@ final class DictationPipeline {
             AppState.shared.phase = .idle
             return
         }
+        Sound.playStop()
 
         processing = true
         AppState.shared.phase = .processing

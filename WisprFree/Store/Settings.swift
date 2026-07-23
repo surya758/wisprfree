@@ -224,6 +224,10 @@ struct AppSettings {
         defaults.string(forKey: "micDeviceUID") ?? ""
     }
 
+    var soundEnabled: Bool {
+        defaults.object(forKey: "soundEnabled") as? Bool ?? true
+    }
+
     // MARK: Prompt overrides
 
     /// User-edited style prompt for a mode; nil = use the built-in default.

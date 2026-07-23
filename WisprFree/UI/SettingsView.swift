@@ -384,6 +384,7 @@ struct GeneralSettingsView: View {
 /// Microphone picker — refreshes the device list when the picker appears.
 struct MicrophoneSection: View {
     @AppStorage("micDeviceUID") private var micDeviceUID = ""
+    @AppStorage("soundEnabled") private var soundEnabled = true
     @State private var devices: [InputDevice] = []
 
     var body: some View {
@@ -398,6 +399,7 @@ struct MicrophoneSection: View {
                     Text("Selected device (unavailable)").tag(micDeviceUID)
                 }
             }
+            Toggle("Play a sound when recording starts and stops", isOn: $soundEnabled)
         } header: {
             Text("Audio")
         }
