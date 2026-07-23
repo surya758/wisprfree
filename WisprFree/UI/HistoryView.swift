@@ -20,97 +20,142 @@ extension View {
 struct HistoryView: View {
     @ObservedObject private var store = HistoryStore.shared
 
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE, MMMM d"
+        return f
+    }()
+
+    /// Items grouped by calendar day, newest day first.
+    private var groups: [(label: String, items: [HistoryItem])] {
+        let cal = Calendar.current
+        let byDay = Dictionary(grouping: store.items) { cal.startOfDay(for: $0.date) }
+        return byDay.keys.sorted(by: >).map { day in
+            let label: String
+            if cal.isDateInToday(day) { label = "Today" }
+            else if cal.isDateInYesterday(day) { label = "Yesterday" }
+            else { label = Self.dayFormatter.string(from: day) }
+            return (label, byDay[day] ?? [])
+        }
+    }
+
     var body: some View {
-        Group {
-            if store.items.isEmpty {
-                ContentUnavailableView(
-                    "No dictations yet",
-                    systemImage: "mic",
-                    description: Text("Hold your dictation key and speak.")
-                )
-            } else {
-                VStack(spacing: 0) {
-                    List {
-                        ForEach(store.items) { item in
-                            HistoryRow(item: item)
-                                .listRowSeparator(.hidden)
+        if store.items.isEmpty {
+            ContentUnavailableView(
+                "No dictations yet",
+                systemImage: "waveform",
+                description: Text("Hold your dictation key and speak — your dictations show up here.")
+            )
+        } else {
+            VStack(spacing: 0) {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 22, pinnedViews: [.sectionHeaders]) {
+                        ForEach(groups, id: \.label) { group in
+                            Section {
+                                VStack(spacing: 8) {
+                                    ForEach(group.items) { item in
+                                        HistoryCard(item: item)
+                                    }
+                                }
+                            } header: {
+                                HStack {
+                                    Text(group.label)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text("\(group.items.count)")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(.vertical, 4)
+                                .background(SettingsColors.app)
+                            }
                         }
                     }
-                    .listStyle(.inset)
-                    .scrollContentBackground(.hidden)
-
-                    // Fixed footer — stays put while the list scrolls.
-                    Divider()
-                    HStack {
-                        Spacer()
-                        Button("Clear History", role: .destructive) { store.clear() }
-                    }
-                    .padding(10)
+                    .padding(20)
                 }
+
+                Divider()
+                HStack {
+                    Text("\(store.items.count) dictation\(store.items.count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Clear History", role: .destructive) { store.clear() }
+                }
+                .padding(10)
             }
         }
     }
 }
 
-/// One dictation. Its own state so hover is independent per row; a short
-/// delay before the highlight appears avoids flicker when sweeping the list.
-private struct HistoryRow: View {
+/// A single dictation, as a card: the text, then a metadata footer with time,
+/// word count, mode dot, and a copy affordance. Click anywhere to copy.
+private struct HistoryCard: View {
     let item: HistoryItem
     @State private var hovered = false
     @State private var copied = false
-    @State private var hoverWork: DispatchWorkItem?
+
+    private var text: String {
+        item.text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var wordCount: Int {
+        text.split { $0.isWhitespace || $0.isNewline }.count
+    }
+
+    // Color-code the pipeline mode so entries are scannable at a glance.
+    private var modeColor: Color {
+        if item.mode.contains("directly") { return .orange }
+        if item.mode.contains("offline") || item.mode.contains("raw") { return .gray }
+        return Color(red: 0.35, green: 0.5, blue: 0.9)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(text)
+                .font(.callout)
+                .lineLimit(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 8) {
+                Circle().fill(modeColor).frame(width: 6, height: 6)
                 Text(item.date, style: .time)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(item.mode)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                Text("·")
+                Text("\(wordCount) word\(wordCount == 1 ? "" : "s")")
                 Spacer()
-                // Fixed-size slot so the hint toggling never shifts layout.
+                // Fixed slot so the label never shifts the footer.
                 ZStack(alignment: .trailing) {
-                    Label("Click to copy", systemImage: "doc.on.doc").opacity(0)
+                    Label("Copied", systemImage: "checkmark").opacity(0)
                     if copied {
                         Label("Copied", systemImage: "checkmark")
                             .foregroundStyle(.green)
-                    } else if hovered {
-                        Label("Click to copy", systemImage: "doc.on.doc")
-                            .foregroundStyle(.secondary)
+                    } else {
+                        Label("Copy", systemImage: "doc.on.doc")
+                            .opacity(hovered ? 1 : 0)
                     }
                 }
-                .font(.caption)
             }
-            Text(item.text.trimmingCharacters(in: .whitespacesAndNewlines))
-                .lineLimit(4)
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 5)
-        .padding(.horizontal, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(hovered ? Color.white.opacity(0.06) : .clear)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.white.opacity(hovered ? 0.07 : 0.03))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(.white.opacity(hovered ? 0.13 : 0.06), lineWidth: 1)
         )
         .contentShape(Rectangle())
         .linkCursor()
         .onHover { inside in
-            hoverWork?.cancel()
-            if inside {
-                let work = DispatchWorkItem {
-                    withAnimation(.easeInOut(duration: 0.12)) { hovered = true }
-                }
-                hoverWork = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
-            } else {
-                withAnimation(.easeInOut(duration: 0.12)) { hovered = false }
-            }
+            withAnimation(.easeInOut(duration: 0.12)) { hovered = inside }
         }
         .onTapGesture {
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(
-                item.text.trimmingCharacters(in: .whitespacesAndNewlines), forType: .string)
+            NSPasteboard.general.setString(text, forType: .string)
             withAnimation { copied = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                 withAnimation { copied = false }
