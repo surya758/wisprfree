@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import AVFoundation
 
 // MARK: - Sidebar shell (System Settings-style)
 
@@ -845,25 +846,33 @@ struct APIKeyField: View {
 
 // MARK: - Permissions
 
-/// Live permission status — accessibility is required for the hotkeys AND
-/// for typing results into other apps, so surface its real state prominently.
+/// Live status for the two permissions the app needs: Microphone (to hear you)
+/// and Accessibility (hotkeys + typing into other apps).
 struct PermissionsSection: View {
     @State private var accessibilityGranted = TextInserter.isAccessibilityTrusted
+    @State private var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Section("Permissions") {
-            LabeledContent {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(accessibilityGranted ? .green : .red)
-                        .frame(width: 9, height: 9)
-                    Text(accessibilityGranted ? "Granted" : "Not granted")
+            statusRow(
+                title: "Microphone",
+                detail: "Required to hear your dictation.",
+                granted: micGranted
+            )
+            if !micGranted {
+                Button("Allow Microphone…") {
+                    AVCaptureDevice.requestAccess(for: .audio) { _ in }
+                    NSWorkspace.shared.open(URL(
+                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
                 }
-            } label: {
-                Text("Accessibility")
-                Text("Required for the hotkeys and for typing into other apps.")
             }
+
+            statusRow(
+                title: "Accessibility",
+                detail: "Required for the hotkeys and for typing into other apps.",
+                granted: accessibilityGranted
+            )
             if !accessibilityGranted {
                 Button("Open Accessibility Settings…") {
                     TextInserter.ensureAccessibility()
@@ -877,6 +886,19 @@ struct PermissionsSection: View {
         }
         .onReceive(timer) { _ in
             accessibilityGranted = TextInserter.isAccessibilityTrusted
+            micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        }
+    }
+
+    private func statusRow(title: String, detail: String, granted: Bool) -> some View {
+        LabeledContent {
+            HStack(spacing: 6) {
+                Circle().fill(granted ? .green : .red).frame(width: 9, height: 9)
+                Text(granted ? "Granted" : "Not granted")
+            }
+        } label: {
+            Text(title)
+            Text(detail)
         }
     }
 }
