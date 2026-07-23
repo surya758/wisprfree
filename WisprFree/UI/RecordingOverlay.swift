@@ -26,6 +26,9 @@ final class RecordingOverlayController {
     }
 
     private static let slide: CGFloat = 26
+    // Fixed panel; the content is bottom-anchored and grows upward inside it,
+    // so the window never resizes (which was causing the position jitter).
+    private static let panelSize = NSSize(width: 460, height: 200)
 
     private func show() {
         if panel == nil { panel = makePanel() }
@@ -47,7 +50,6 @@ final class RecordingOverlayController {
 
     private func hide() {
         guard let panel, panel.isVisible else { return }
-        // Slide down off the bottom while fading out.
         let origin = panel.frame.origin
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.22
@@ -56,13 +58,12 @@ final class RecordingOverlayController {
             panel.animator().setFrameOrigin(NSPoint(x: origin.x, y: origin.y - Self.slide))
         }, completionHandler: {
             panel.orderOut(nil)
-            panel.setFrameOrigin(origin)
         })
     }
 
     private func makePanel() -> NSPanel {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 60),
+            contentRect: NSRect(origin: .zero, size: Self.panelSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -76,18 +77,8 @@ final class RecordingOverlayController {
         panel.ignoresMouseEvents = false
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-
-        // contentViewController auto-sizes the window to the SwiftUI card, so
-        // it grows with the transcript; re-center on every resize.
-        let hosting = NSHostingController(rootView: RecordingOverlayView().environmentObject(AppState.shared))
-        hosting.sizingOptions = .preferredContentSize
-        panel.contentViewController = hosting
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.didResizeNotification, object: panel, queue: .main
-        ) { [weak self, weak panel] _ in
-            guard let panel else { return }
-            MainActor.assumeIsolated { self?.position(panel) }
-        }
+        let hosting = NSHostingView(rootView: RecordingOverlayView().environmentObject(AppState.shared))
+        panel.contentView = hosting
         return panel
     }
 
@@ -122,6 +113,9 @@ struct RecordingOverlayView: View {
             }
             ControlPill()
         }
+        // Bottom-anchor inside the fixed panel; the empty area above is
+        // transparent and passes clicks through.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 2)
     }
 }

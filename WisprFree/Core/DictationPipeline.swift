@@ -161,7 +161,9 @@ final class DictationPipeline {
                     AppState.shared.phase = .idle
                     return
                 }
-                guard !text.isEmpty else {
+                // Nothing worth inserting (silence / whitespace) — no history,
+                // no grace wait.
+                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     AppState.shared.phase = .idle
                     return
                 }
