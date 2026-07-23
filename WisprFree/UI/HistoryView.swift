@@ -6,11 +6,10 @@ struct HistoryView: View {
     var body: some View {
         List {
             // Hero lives inside the list so it scrolls away like other panes.
-            Section {
-                PaneHero(pane: .history)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+            PaneHero(pane: .history)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
             if store.items.isEmpty {
                 Section {
