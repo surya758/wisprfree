@@ -46,6 +46,20 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .about: return .pink
         }
     }
+
+    /// Subtitle for the hero header card.
+    var blurb: String {
+        switch self {
+        case .general: return "Dictation pipeline, startup behavior, and the permissions that make it all work."
+        case .insights: return "How much you've dictated — today, this week, and all time."
+        case .modes: return "Tune how aggressively your dictation is cleaned up for each kind of writing."
+        case .hotkeys: return "The keys that start, stop, and cancel dictation — remap them to anything."
+        case .models: return "Choose the on-device speech model and the AI that polishes your text."
+        case .dictionary: return "Names and terms the AI should always spell correctly."
+        case .history: return "Your recent dictations, ready to copy."
+        case .about: return "Version, what it's built on, and where your data lives."
+        }
+    }
 }
 
 /// User-specified palette: floating sidebar panel over the app background.
@@ -55,7 +69,22 @@ enum SettingsColors {
 }
 
 struct SettingsView: View {
-    @State private var pane: SettingsPane = .general
+    // Visited-pane history drives the back/forward buttons.
+    @State private var history: [SettingsPane] = [.general]
+    @State private var historyIndex = 0
+
+    private var pane: SettingsPane { history[historyIndex] }
+
+    private var paneSelection: Binding<SettingsPane?> {
+        Binding(
+            get: { pane },
+            set: { selected in
+                guard let selected, selected != pane else { return }
+                history = Array(history[...historyIndex]) + [selected]
+                historyIndex = history.count - 1
+            }
+        )
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -72,7 +101,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Room for the traffic lights, which float over this area.
             Color.clear.frame(height: 52)
-            List(SettingsPane.allCases, selection: $pane) { pane in
+            List(SettingsPane.allCases, selection: paneSelection) { pane in
                 Label {
                     Text(pane.title)
                 } icon: {
@@ -95,21 +124,23 @@ struct SettingsView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(.white.opacity(0.06), lineWidth: 1)
         )
-        .padding([.leading, .top, .bottom], 12)
+        .padding([.leading, .top, .bottom], 8)
     }
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Opaque header layer: scrolled form cards must never paint over
-            // the pane title.
-            Text(pane.title)
-                .font(.title2.bold())
-                .padding(.top, 22)
-                .padding(.leading, 26)
-                .padding(.bottom, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(SettingsColors.app)
-                .zIndex(1)
+            // Opaque header layer (nav pill + hero card): scrolled form cards
+            // must never paint over it.
+            VStack(alignment: .leading, spacing: 10) {
+                navigationPill
+                heroCard
+            }
+            .padding(.top, 12)
+            .padding(.horizontal, 22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SettingsColors.app)
+            .zIndex(1)
+
             Group {
                 switch pane {
                 case .general: GeneralSettingsView()
@@ -127,6 +158,53 @@ struct SettingsView: View {
         }
         // The app background shows through; forms hide their own (darker)
         // scroll background and their grouped cards float on top.
+    }
+
+    /// Back/forward through visited panes, like System Settings.
+    private var navigationPill: some View {
+        HStack(spacing: 0) {
+            Button {
+                historyIndex -= 1
+            } label: {
+                Image(systemName: "chevron.left")
+                    .frame(width: 34, height: 26)
+            }
+            .disabled(historyIndex == 0)
+            Divider().frame(height: 16)
+            Button {
+                historyIndex += 1
+            } label: {
+                Image(systemName: "chevron.right")
+                    .frame(width: 34, height: 26)
+            }
+            .disabled(historyIndex >= history.count - 1)
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .background(Capsule().fill(.white.opacity(0.05)))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1))
+    }
+
+    /// Big System Settings-style header: icon, title, and what the pane does.
+    private var heroCard: some View {
+        VStack(spacing: 8) {
+            Image(systemName: pane.icon)
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(pane.iconColor.gradient))
+            Text(pane.title)
+                .font(.title.bold())
+            Text(pane.blurb)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white.opacity(0.05)))
     }
 }
 
