@@ -83,7 +83,8 @@ struct HistoryView: View {
                     Spacer()
                     Button("Clear History", role: .destructive) { store.clear() }
                 }
-                .padding(10)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
             }
         }
     }
