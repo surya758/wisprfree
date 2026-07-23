@@ -9,6 +9,7 @@ struct AboutView: View {
 
     var body: some View {
         Form {
+            PaneHeroSection(pane: .about)
             Section {
                 HStack(spacing: 14) {
                     Image(nsImage: NSApp.applicationIconImage)

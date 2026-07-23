@@ -6,6 +6,7 @@ struct InsightsView: View {
 
     var body: some View {
         Form {
+            PaneHeroSection(pane: .insights)
             Section("Today") {
                 HStack(spacing: 10) {
                     StatTile(value: formatted(stats.today.words), label: "words")

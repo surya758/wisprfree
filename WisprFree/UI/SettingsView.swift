@@ -129,17 +129,15 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Opaque header layer (nav pill + hero card): scrolled form cards
-            // must never paint over it.
-            VStack(alignment: .leading, spacing: 10) {
-                navigationPill
-                heroCard
-            }
-            .padding(.top, 12)
-            .padding(.horizontal, 22)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(SettingsColors.app)
-            .zIndex(1)
+            // Fixed header: just the nav pill on an opaque layer; the hero
+            // card lives inside each pane's scroll content.
+            navigationPill
+                .padding(.top, 12)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(SettingsColors.app)
+                .zIndex(1)
 
             Group {
                 switch pane {
@@ -161,8 +159,9 @@ struct SettingsView: View {
     }
 
     /// Back/forward through visited panes, like System Settings.
+    /// Native glass on macOS 26+, vibrancy material on earlier releases.
     private var navigationPill: some View {
-        HStack(spacing: 0) {
+        let pill = HStack(spacing: 0) {
             Button {
                 historyIndex -= 1
             } label: {
@@ -182,12 +181,25 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(.secondary)
-        .background(Capsule().fill(.white.opacity(0.05)))
-        .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1))
-    }
 
-    /// Big System Settings-style header: icon, title, and what the pane does.
-    private var heroCard: some View {
+        return Group {
+            if #available(macOS 26.0, *) {
+                pill.glassEffect()
+            } else {
+                pill
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1))
+            }
+        }
+    }
+}
+
+/// Big System Settings-style header: icon, title, and what the pane does.
+/// Placed inside each pane's scroll content so it slides away with it.
+struct PaneHero: View {
+    let pane: SettingsPane
+
+    var body: some View {
         VStack(spacing: 8) {
             Image(systemName: pane.icon)
                 .font(.system(size: 26, weight: .semibold))
@@ -208,6 +220,19 @@ struct SettingsView: View {
     }
 }
 
+/// Hero as a Form section row (clear row chrome so the card is the visual).
+struct PaneHeroSection: View {
+    let pane: SettingsPane
+
+    var body: some View {
+        Section {
+            PaneHero(pane: pane)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
+    }
+}
+
 // MARK: - General
 
 struct GeneralSettingsView: View {
@@ -217,6 +242,7 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
+            PaneHeroSection(pane: .general)
             Section("Dictation") {
                 Picker("Mode", selection: $mode) {
                     ForEach(DictationMode.allCases) { mode in
@@ -260,6 +286,7 @@ struct ModesSettingsView: View {
 
     var body: some View {
         Form {
+            PaneHeroSection(pane: .modes)
             Section {
                 Picker("Mode", selection: $profile) {
                     ForEach(DictationProfile.allCases) { profile in
@@ -336,6 +363,7 @@ struct HotkeySettingsView: View {
 
     var body: some View {
         Form {
+            PaneHeroSection(pane: .hotkeys)
             Section {
                 HotkeyRecorderRow(
                     title: "Push-to-talk",
@@ -556,6 +584,7 @@ struct ModelSettingsView: View {
 
     var body: some View {
         Form {
+            PaneHeroSection(pane: .models)
             Section {
                 Picker("Model", selection: $sttModel) {
                     ForEach(SttCatalog.options) { option in

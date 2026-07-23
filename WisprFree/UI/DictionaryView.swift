@@ -6,6 +6,7 @@ struct DictionaryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            PaneHero(pane: .dictionary)
             Text("Names and terms Gemini should always spell correctly (e.g. pinyin character names).")
                 .font(.caption)
                 .foregroundStyle(.secondary)

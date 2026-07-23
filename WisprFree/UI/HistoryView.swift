@@ -5,6 +5,8 @@ struct HistoryView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
+            PaneHero(pane: .history)
+                .padding([.horizontal, .top])
             if store.items.isEmpty {
                 ContentUnavailableView(
                     "No dictations yet",
