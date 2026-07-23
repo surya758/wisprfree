@@ -195,9 +195,9 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
             .coordinateSpace(name: Self.contentSpace)
-            .onPreferenceChange(HeroMaxYKey.self) { maxY in
-                // Collapse the title once the hero's bottom nears the top.
-                let visible = maxY > 16
+            .onPreferenceChange(HeroVisibleFractionKey.self) { fraction in
+                // Collapse the title once less than 45% of the hero is visible.
+                let visible = fraction > 0.45
                 Task { @MainActor in
                     if header.heroVisible != visible { header.heroVisible = visible }
                 }
@@ -246,11 +246,11 @@ struct SettingsView: View {
     }
 }
 
-/// Reports the hero's bottom edge within the detail content coordinate space,
-/// so the shell can collapse the title once the hero scrolls off the top.
-/// Default is very negative so that when the hero row is recycled off-screen
-/// the title stays collapsed (max-reduce keeps the real value when present).
-struct HeroMaxYKey: PreferenceKey {
+/// Reports how much of the hero is still visible (1 = fully, 0 = gone), so
+/// the shell can collapse the title past a threshold. Default is very
+/// negative so a recycled off-screen hero row stays collapsed (max-reduce
+/// keeps the real value when present).
+struct HeroVisibleFractionKey: PreferenceKey {
     static let defaultValue: CGFloat = -.greatestFiniteMagnitude
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
@@ -283,9 +283,11 @@ struct PaneHero: View {
         .padding(.bottom, 16)
         .background(
             GeometryReader { geo in
+                let height = geo.size.height
+                let maxY = geo.frame(in: .named(SettingsView.contentSpace)).maxY
                 Color.clear.preference(
-                    key: HeroMaxYKey.self,
-                    value: geo.frame(in: .named(SettingsView.contentSpace)).maxY
+                    key: HeroVisibleFractionKey.self,
+                    value: height > 0 ? maxY / height : 1
                 )
             }
         )
