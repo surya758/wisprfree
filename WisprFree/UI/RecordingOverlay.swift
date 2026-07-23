@@ -23,12 +23,6 @@ final class RecordingOverlayController {
     private func show() {
         if panel == nil { panel = makePanel() }
         guard let panel else { return }
-        let phase = AppState.shared.phase
-        // Two-tier (taller/wider) when there's a text row: live preview or the
-        // grace window. Otherwise a compact single row.
-        let tiered = phase == .confirming
-            || (phase == .recording && AppSettings.current.liveTranscription)
-        panel.setContentSize(NSSize(width: tiered ? 460 : 250, height: tiered ? 62 : 40))
         position(panel)
         guard !panel.isVisible else { return }
         panel.alphaValue = 0
@@ -51,7 +45,7 @@ final class RecordingOverlayController {
 
     private func makePanel() -> NSPanel {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 250, height: 40),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 60),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -60,12 +54,23 @@ final class RecordingOverlayController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        // Mouse events stay on so the ✕ button is clickable; the panel is
+        // Mouse events stay on so the buttons are clickable; the panel is
         // non-activating, so clicks don't steal focus from the target app.
         panel.ignoresMouseEvents = false
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        panel.contentView = NSHostingView(rootView: RecordingPill().environmentObject(AppState.shared))
+
+        // contentViewController auto-sizes the window to the SwiftUI card, so
+        // it grows with the transcript; re-center on every resize.
+        let hosting = NSHostingController(rootView: RecordingCard().environmentObject(AppState.shared))
+        hosting.sizingOptions = .preferredContentSize
+        panel.contentViewController = hosting
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification, object: panel, queue: .main
+        ) { [weak self, weak panel] _ in
+            guard let panel else { return }
+            MainActor.assumeIsolated { self?.position(panel) }
+        }
         return panel
     }
 
@@ -83,105 +88,107 @@ final class RecordingOverlayController {
     }
 }
 
-/// The pill itself: animated waveform bars while recording (driven by mic
-/// level), pulsing dots while transcribing.
-struct RecordingPill: View {
+/// Auto-sizing card: waveform + status on top, the transcript below, and a
+/// Copy button. Grows with the text (up to a max) and stays screen-centered.
+struct RecordingCard: View {
     @EnvironmentObject var appState: AppState
 
-    private var isLiveRecording: Bool {
-        appState.phase == .recording && AppSettings.current.liveTranscription
+    private static let maxChars = 260
+
+    /// The text to display — live transcript while recording, final while confirming.
+    private var text: String {
+        switch appState.phase {
+        case .confirming: return appState.pendingText
+        default: return appState.interimText
+        }
+    }
+
+    /// Capped to the tail so the latest words stay visible.
+    private var displayText: String {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.count > Self.maxChars ? "…" + t.suffix(Self.maxChars) : t
+    }
+
+    private var status: String {
+        switch appState.phase {
+        case .recording: return "Listening…"
+        case .processing: return "Transcribing…"
+        case .confirming: return "Inserting… tap ✕ to cancel"
+        default: return ""
+        }
     }
 
     var body: some View {
-        Group {
-            switch appState.phase {
-            case .confirming: confirming
-            case .recording where isLiveRecording: liveRecording
-            case .recording: simpleRow
-            default: processingRow
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, isLiveRecording || appState.phase == .confirming ? 9 : 8)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.black.opacity(0.78))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Compact single row: red dot + waveform + ✕.
-    private var simpleRow: some View {
-        HStack(spacing: 10) {
-            Circle().fill(.red).frame(width: 8, height: 8)
-            WaveformBars(level: appState.audioLevel)
-            Spacer(minLength: 0)
-            cancelButton
-        }
-    }
-
-    private var processingRow: some View {
-        HStack(spacing: 10) {
-            ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
-            Spacer(minLength: 0)
-            cancelButton
-        }
-    }
-
-    /// Two tiers: transcribed text on top, waveform + ✕ on the bottom.
-    private var liveRecording: some View {
-        VStack(spacing: 7) {
-            Text(appState.interimText.isEmpty ? "Listening…" : appState.interimText)
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(appState.interimText.isEmpty ? 0.5 : 0.95))
-                .lineLimit(1)
-                .truncationMode(.head)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 10) {
+            // Top row: waveform (or spinner) left, status centered, ✕ right.
             HStack(spacing: 10) {
-                Circle().fill(.red).frame(width: 8, height: 8)
-                WaveformBars(level: appState.audioLevel)
-                Spacer(minLength: 0)
-                cancelButton
-            }
-        }
-    }
-
-    /// Grace window: the pending text and a draining countdown bar.
-    private var confirming: some View {
-        VStack(spacing: 7) {
-            HStack(spacing: 10) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.system(size: 13))
-                Text(appState.pendingText)
+                if appState.phase == .processing {
+                    ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
+                        .frame(width: 60, alignment: .leading)
+                } else {
+                    WaveformBars(level: appState.audioLevel)
+                        .frame(width: 60, alignment: .leading)
+                }
+                Spacer(minLength: 6)
+                Text(status)
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.95))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundStyle(.white.opacity(0.5))
+                Spacer(minLength: 6)
                 cancelButton
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.15))
-                    Capsule().fill(.white.opacity(0.55))
-                        .frame(width: geo.size.width * appState.confirmProgress)
+
+            if !displayText.isEmpty {
+                Text(displayText)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if appState.phase == .confirming {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(.white.opacity(0.15))
+                        Capsule().fill(.white.opacity(0.55))
+                            .frame(width: geo.size.width * appState.confirmProgress)
+                    }
+                }
+                .frame(height: 4)
+            }
+
+            if !displayText.isEmpty {
+                HStack {
+                    Spacer()
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(
+                            text.trimmingCharacters(in: .whitespacesAndNewlines), forType: .string)
+                    }
+                    .controlSize(.small)
                 }
             }
-            .frame(height: 4)
         }
+        .padding(16)
+        .frame(width: 460)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.black.opacity(0.82))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.4), radius: 16, y: 6)
+        )
     }
 
     private var cancelButton: some View {
         Button { appState.cancelDictation() } label: {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 15))
-                .foregroundStyle(.white.opacity(0.65))
+            Image(systemName: "xmark")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white.opacity(0.75))
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(.white.opacity(0.14)))
         }
         .buttonStyle(.plain)
         .help("Cancel")
