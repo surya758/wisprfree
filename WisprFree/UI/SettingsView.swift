@@ -472,9 +472,17 @@ struct ModelSettingsView: View {
             Section {
                 Picker("Model", selection: $sttModel) {
                     ForEach(SttCatalog.options) { option in
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(option.label)
-                            Text(option.detail).font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(option.label)
+                                Text(option.detail).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            // Downloading/loading state lives on the row itself.
+                            if appState.phase == .loadingModel, option.id == sttModel {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
                         }
                         .tag(option.id)
                     }
@@ -484,23 +492,6 @@ struct ModelSettingsView: View {
                 .onChange(of: sttModel) { _, _ in
                     // Download (if needed) and load the newly selected model.
                     Task { await appState.pipeline.warmUp() }
-                }
-                if appState.phase == .loadingModel {
-                    HStack(spacing: 10) {
-                        if let progress = appState.downloadProgress {
-                            ProgressView(value: progress)
-                                .progressViewStyle(.linear)
-                            Text("\(Int(progress * 100))%")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 36, alignment: .trailing)
-                        } else {
-                            ProgressView().controlSize(.small)
-                            Text("Loading model…")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                 }
             } header: {
                 Text("Speech recognition (on-device)")
