@@ -62,6 +62,11 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org)
 
 First launch walks you through everything: microphone + Accessibility permissions (Accessibility powers the hotkeys and typing into other apps), choosing an AI provider, and a test box to try your first dictation. Rerun it anytime from Settings → About → *Show Welcome Guide*.
 
+The app **updates itself** via [Sparkle](https://sparkle-project.org) — it checks
+daily and you can trigger a check from the menu bar or Settings → About. Cutting a
+release is one command: bump the version in `project.yml`, then
+`./release.sh "notes"` (builds, signs, updates the appcast, tags, and publishes).
+
 ## Where things live
 
 | What | Where |
