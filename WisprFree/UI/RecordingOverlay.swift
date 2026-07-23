@@ -25,26 +25,38 @@ final class RecordingOverlayController {
             }
     }
 
+    private static let slide: CGFloat = 26
+
     private func show() {
         if panel == nil { panel = makePanel() }
         guard let panel else { return }
         position(panel)
         guard !panel.isVisible else { return }
+        // Slide up from below while fading in.
+        let target = panel.frame.origin
+        panel.setFrameOrigin(NSPoint(x: target.x, y: target.y - Self.slide))
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.18
+            context.duration = 0.24
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 1
+            panel.animator().setFrameOrigin(target)
         }
     }
 
     private func hide() {
         guard let panel, panel.isVisible else { return }
+        // Slide down off the bottom while fading out.
+        let origin = panel.frame.origin
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
+            panel.animator().setFrameOrigin(NSPoint(x: origin.x, y: origin.y - Self.slide))
         }, completionHandler: {
             panel.orderOut(nil)
+            panel.setFrameOrigin(origin)
         })
     }
 
