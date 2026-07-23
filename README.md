@@ -1,68 +1,71 @@
-# WisprFree
+# WisprFree 🎙️
 
-A free, personal Wispr Flow–style dictation app for macOS, built for novel writing.
+**Talk to your Mac. Get back clean, polished text — in any app, in your voice, with your characters' names spelled right.**
 
-Speak anywhere — clean, grammatical text is typed into whatever app you're in.
-A floating pill at the bottom of the screen shows an animated waveform while recording.
+WisprFree is a free, open, menu-bar dictation app for macOS. It was born out of a specific frustration: dictation tools transcribe *exactly* what you say — every "um", every false start, every pause — and mangle names they've never heard ("Lin Ming" becomes "Lynn Ming" on a good day). If English isn't your first language, or you write fiction full of pinyin names, raw speech-to-text is barely usable.
 
-## Hotkeys
+So WisprFree does it in two steps: a **local speech model** hears you (fast, private, free), then an **LLM cleans it up** — grammar fixed, fillers gone, your glossary of names applied — and the result is typed straight into whatever app your cursor is in.
+
+## How you use it
 
 | Key | Action |
 |---|---|
 | **Hold Fn** | Push-to-talk: record while held, release to insert |
-| **Fn+Space** | Hands-free recording (release the keys) |
-| **Tap Fn** (while recording) | Stop and insert |
-| **Esc** (while recording) | Cancel, discard the recording |
+| **Fn + Space** | Hands-free: keep talking, hands off the keyboard |
+| **Tap Fn** | Stop a hands-free recording and insert |
+| **Esc** | Never mind — discard the recording |
 
-> Set System Settings → Keyboard → **"Press 🌐 key to" = Do Nothing**, otherwise
-> tapping Fn also opens the emoji picker.
+A little pill at the bottom of your screen shows a live waveform while you speak. All three hotkeys are remappable in Settings (bare modifiers, F-keys, and combos all work).
 
-## How it works
+> **Fn key tip:** set System Settings → Keyboard → *"Press 🌐 key to"* = **Do Nothing**, or macOS will helpfully open the emoji picker every time you tap Fn.
 
-1. **Record** — mic audio is captured at 16 kHz while the hotkey is held.
-2. **Transcribe** — [Parakeet TDT v3](https://github.com/FluidInference/FluidAudio)
-   runs locally on the Apple Neural Engine (free, offline, ~instant).
-3. **Clean up** — Gemini (Vertex AI) fixes grammar, removes fillers/false starts and
-   pauses, and corrects glossary names (e.g. pinyin names like *Lin Ming*).
-4. **Insert** — the result is pasted into the frontmost app (clipboard is restored).
+## What's inside
 
-### Modes (Settings → General)
+**🖥️ Local speech recognition** — pick your engine in Settings → Models, downloaded on first use and cached:
 
-| Mode | What it does |
-|---|---|
-| Parakeet + Gemini cleanup *(default)* | Local STT, then LLM text cleanup. Fast and nearly free. |
-| Audio directly to Gemini | Sends the WAV straight to Gemini — transcription + cleanup in one shot. |
-| Parakeet only | Raw local transcript, fully offline, no cleanup. |
+- **Parakeet TDT v2 / v3** (NVIDIA) — near-instant on the Apple Neural Engine; v2 for English, v3 for 25 languages
+- **Whisper Large v3** (OpenAI) — heavyweight accuracy, ~3 GB
+- **Cohere Transcribe** — strong multilingual, including Chinese
 
-If Gemini is unreachable, the raw Parakeet transcript is inserted instead (toggleable),
-so a dictation is never lost.
+**✨ AI cleanup** — bring whichever provider you like:
 
-## Dictionary
+- **Google Vertex AI** — uses your `gcloud` login, no API key
+- **Google Gemini API** — free API key from [AI Studio](https://aistudio.google.com)
+- **OpenAI-compatible** — any endpoint that speaks chat-completions: OpenAI, OpenRouter, Groq, a local Ollama… you set the base URL and model
 
-Settings → Dictionary. Add character/place names ("Lin Ming", "Xiao Yan") with optional
-"often misheard as" hints. The glossary is injected into every Gemini request so names
-come out spelled correctly.
+API keys live in your **macOS Keychain**, never in a config file. No provider configured? Raw local transcription still works, fully offline — and if your provider ever errors mid-dictation, WisprFree inserts the raw transcript rather than eating your words.
 
-## Requirements
+**🎭 Modes** — dictation isn't one-size-fits-all. Switch from the menu bar:
 
-- Apple Silicon Mac, macOS 14+
-- Google Cloud credentials: `gcloud auth application-default login`
-  (the app mints Vertex AI tokens from your ADC file; no API key needed)
-- Permissions granted on first use: **Microphone** and **Accessibility**
-  (needed to type into other apps)
+- **Casual** — light cleanup for messages and notes; keeps your tone, doesn't formalize
+- **Writing** — aggressive cleanup for prose, with your name dictionary applied
+- **Professional** — clear, punctuated business writing
 
-## Build
+Every mode's prompt is **editable in-app** (Settings → Modes), so you can reshape any of them into whatever you need.
+
+**📖 Dictionary** — teach it your world. Add character and place names ("Lin Ming", "Xiao Yan"), optionally with common mishearings, and the cleanup model corrects them in context.
+
+**📊 Insights** — words dictated today, your streak, and how much typing time you've saved.
+
+## Setup
 
 ```sh
 brew install xcodegen   # once
-./install.sh            # build (Release) + install into /Applications + launch
+./install.sh            # build (Release) → /Applications/WisprFree.app → launch
 ```
 
-First launch downloads the Parakeet model (~460 MB) to
-`~/Library/Application Support/FluidAudio/`.
+Requirements: Apple Silicon Mac, macOS 14+.
 
-## Configuration
+First launch walks you through everything: microphone + Accessibility permissions (Accessibility powers the hotkeys and typing into other apps), choosing an AI provider, and a test box to try your first dictation. Rerun it anytime from Settings → About → *Show Welcome Guide*.
 
-Settings → Vertex AI: model (default `gemini-3.5-flash-lite`), GCP project, location
-(default `global`). Dictionary and history are stored in
-`~/Library/Application Support/WisprFree/`.
+## Where things live
+
+| What | Where |
+|---|---|
+| Dictionary, history, stats | `~/Library/Application Support/WisprFree/` |
+| Speech models (Parakeet, Cohere) | `~/Library/Application Support/FluidAudio/` |
+| API keys | macOS Keychain |
+
+## Built on the shoulders of
+
+[FluidAudio](https://github.com/FluidInference/FluidAudio) (Parakeet & Cohere CoreML runtimes) · [WhisperKit](https://github.com/argmaxinc/WhisperKit) (Whisper on CoreML) · Google Gemini · and a novelist who got tired of typing.

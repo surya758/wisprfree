@@ -44,6 +44,9 @@ struct AboutView: View {
                                value: "~/Library/Application Support/WisprFree")
                 LabeledContent("Speech models",
                                value: "~/Library/Application Support/FluidAudio")
+                Button("Show Welcome Guide") {
+                    OnboardingWindowController.shared.show()
+                }
                 Button("Open Data Folder") {
                     let url = FileManager.default
                         .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

@@ -17,9 +17,12 @@ struct WisprFreeApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // First run (or missing permission): surface the window so the user
-        // isn't left staring at nothing but a menu-bar icon.
-        if !TextInserter.isAccessibilityTrusted {
+        if !UserDefaults.standard.bool(forKey: "onboardingDone") {
+            // First run: guided setup.
+            OnboardingWindowController.shared.show()
+        } else if !TextInserter.isAccessibilityTrusted {
+            // Missing permission: surface the window so the user isn't left
+            // staring at nothing but a menu-bar icon.
             MainWindowController.shared.show()
         }
     }
