@@ -135,15 +135,14 @@ struct SettingsView: View {
         .frame(width: 212)
         .frame(maxHeight: .infinity)
         .background(SettingsColors.sidebar)
-        // Soft scroll-edge fade: list content dissolves into the sidebar
-        // color at the bottom, like macOS System Settings.
+        // Visible soft fade toward the bottom edge of the sidebar.
         .overlay(alignment: .bottom) {
             LinearGradient(
-                colors: [SettingsColors.sidebar.opacity(0), SettingsColors.sidebar],
+                colors: [.clear, .black.opacity(0.35)],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 44)
+            .frame(height: 110)
             .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
