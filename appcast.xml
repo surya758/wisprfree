@@ -3,6 +3,32 @@
     <channel>
         <title>WisprFree</title>
         <item>
+            <title>0.1.4</title>
+            <pubDate>Thu, 23 Jul 2026 09:35:12 +0000</pubDate>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>0.1.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[A big feature release.
+
+## New
+- **Bring-your-own AI** — Google Vertex AI, Gemini API key, or any OpenAI-compatible endpoint (OpenAI, OpenRouter, Groq, local Ollama). Keys stored in the macOS Keychain.
+- **More speech engines** — Parakeet v2/v3, Whisper Large v3, Cohere Transcribe, switchable in Settings.
+- **Output modes** — Paste, Type characters (no clipboard; works in terminals), or Copy only.
+- **Live transcription** (optional) — watch the words appear as you speak.
+- **Cancel window** — an optional countdown before insertion so you can abort; cancel works mid-transcription too (cancels the network call).
+- **Microphone picker**, **start/stop sounds**, **launch at login**.
+- **Auto-updates** via Sparkle — this and every future version update themselves.
+
+## Polished
+- Redesigned, System Settings–style preferences (sidebar, hero headers, glass nav).
+- Reworked History (day-grouped, click-to-copy) and Dictionary (native table).
+- First-run onboarding, Insights (words/streak/time saved), editable per-mode prompts.
+
+## Install
+Download `WisprFree-0.1.4.zip`, unzip, move **WisprFree.app** to /Applications. On first launch **right-click → Open**, or `xattr -dr com.apple.quarantine /Applications/WisprFree.app`. Apple Silicon, macOS 14+. Local dictation is fully offline; a cloud AI is optional (cleanup only).]]></description>
+            <enclosure url="https://github.com/surya758/wisprfree/releases/download/v0.1.4/WisprFree-0.1.4.zip" sparkle:edSignature="ApPMTsK8Jq5FoOWZVaSo4ehwSe6AYMvu0oMLc/pUheRJN18Cp2+q2h8uIFS05Ax+s+GKh1HnuQVJf9vlgT7EBg==" length="5411869" type="application/octet-stream" />
+        </item>
+        <item>
             <title>0.1.3</title>
             <pubDate>Thu, 23 Jul 2026 08:21:03 +0000</pubDate>
             <sparkle:version>4</sparkle:version>

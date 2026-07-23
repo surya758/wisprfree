@@ -33,8 +33,8 @@ targets:
         NSMicrophoneUsageDescription: "WisprFree uses the microphone to transcribe your dictation."
         CFBundleDisplayName: WisprFree
         CFBundleIconFile: AppIcon
-        CFBundleShortVersionString: "0.1.3"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "0.1.4"
+        CFBundleVersion: "5"
         # Sparkle auto-update
         SUFeedURL: "https://raw.githubusercontent.com/surya758/wisprfree/main/appcast.xml"
         SUPublicEDKey: "bVKnaQILtCyDQBc8fqsjsm5qjvr8sNRiPEmHWXf/Yu4="
