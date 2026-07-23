@@ -68,8 +68,8 @@ final class MainWindowController {
         guard let window else { return }
         let types: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
         guard let container = window.standardWindowButton(.closeButton)?.superview else { return }
-        let leftInset: CGFloat = 34   // from window left edge
-        let topInset: CGFloat = 32    // from window top edge
+        let leftInset: CGFloat = 24   // from window left edge
+        let topInset: CGFloat = 24    // from window top edge
         for (index, type) in types.enumerated() {
             guard let button = window.standardWindowButton(type) else { continue }
             let size = button.frame.size

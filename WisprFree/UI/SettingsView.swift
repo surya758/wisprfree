@@ -472,7 +472,7 @@ struct ModelSettingsView: View {
             Section {
                 Picker("Model", selection: $sttModel) {
                     ForEach(SttCatalog.options) { option in
-                        HStack {
+                        HStack(alignment: .center, spacing: 8) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(option.label)
                                 Text(option.detail).font(.caption).foregroundStyle(.secondary)
@@ -482,6 +482,8 @@ struct ModelSettingsView: View {
                             if appState.phase == .loadingModel, option.id == sttModel {
                                 ProgressView()
                                     .controlSize(.small)
+                                    .frame(width: 16, height: 16)
+                                    .offset(y: 1)
                             }
                         }
                         .tag(option.id)
