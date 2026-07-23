@@ -62,7 +62,7 @@ final class RecordingOverlayController {
 
         // contentViewController auto-sizes the window to the SwiftUI card, so
         // it grows with the transcript; re-center on every resize.
-        let hosting = NSHostingController(rootView: RecordingCard().environmentObject(AppState.shared))
+        let hosting = NSHostingController(rootView: RecordingOverlayView().environmentObject(AppState.shared))
         hosting.sizingOptions = .preferredContentSize
         panel.contentViewController = hosting
         NotificationCenter.default.addObserver(
@@ -88,107 +88,115 @@ final class RecordingOverlayController {
     }
 }
 
-/// Auto-sizing card: waveform + status on top, the transcript below, and a
-/// Copy button. Grows with the text (up to a max) and stays screen-centered.
-struct RecordingCard: View {
+/// Layered overlay: a text-only box (only when live transcription is on / during
+/// the grace window) sits above a compact control pill.
+struct RecordingOverlayView: View {
     @EnvironmentObject var appState: AppState
 
-    private static let maxChars = 260
-
-    /// The text to display — live transcript while recording, final while confirming.
-    private var text: String {
-        switch appState.phase {
-        case .confirming: return appState.pendingText
-        default: return appState.interimText
-        }
-    }
-
-    /// Capped to the tail so the latest words stay visible.
-    private var displayText: String {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return t.count > Self.maxChars ? "…" + t.suffix(Self.maxChars) : t
-    }
-
-    private var status: String {
-        switch appState.phase {
-        case .recording: return "Listening…"
-        case .processing: return "Transcribing…"
-        case .confirming: return "Inserting… tap ✕ to cancel"
-        default: return ""
-        }
+    private var showTextBox: Bool {
+        (appState.phase == .recording && AppSettings.current.liveTranscription)
+            || appState.phase == .confirming
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Top row: waveform (or spinner) left, status centered, ✕ right.
-            HStack(spacing: 10) {
-                if appState.phase == .processing {
-                    ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
-                        .frame(width: 60, alignment: .leading)
-                } else {
-                    WaveformBars(level: appState.audioLevel)
-                        .frame(width: 60, alignment: .leading)
-                }
-                Spacer(minLength: 6)
-                Text(status)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.5))
-                Spacer(minLength: 6)
+        VStack(spacing: 8) {
+            if showTextBox {
+                TranscriptBox()
+            }
+            ControlPill()
+        }
+        .padding(.bottom, 2)
+    }
+}
+
+/// The big top box — text only. No logo, buttons, or waveform.
+struct TranscriptBox: View {
+    @EnvironmentObject var appState: AppState
+    private static let maxChars = 280
+
+    private var text: String {
+        appState.phase == .confirming ? appState.pendingText : appState.interimText
+    }
+
+    private var display: String {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return "Listening…" }
+        return t.count > Self.maxChars ? "…" + t.suffix(Self.maxChars) : t
+    }
+
+    private var isPlaceholder: Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        Text(display)
+            .font(.system(size: 15))
+            .foregroundStyle(.white.opacity(isPlaceholder ? 0.45 : 0.95))
+            .lineLimit(4)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: 420, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.black.opacity(0.82))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 16, y: 6)
+            )
+    }
+}
+
+/// The compact bottom pill — three elements: state indicator + waveform + ✕.
+struct ControlPill: View {
+    @EnvironmentObject var appState: AppState
+
+    var body: some View {
+        HStack(spacing: 10) {
+            switch appState.phase {
+            case .processing:
+                ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
+                WaveformBars(level: 0)
+                cancelButton
+            case .confirming:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green).font(.system(size: 13))
+                countdownBar
+                cancelButton
+            default:  // recording
+                Circle().fill(.red).frame(width: 8, height: 8)
+                WaveformBars(level: appState.audioLevel)
                 cancelButton
             }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.82))
+                .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
+                .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+        )
+    }
 
-            if !displayText.isEmpty {
-                Text(displayText)
-                    .font(.system(size: 15))
-                    .foregroundStyle(.white)
-                    .lineLimit(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if appState.phase == .confirming {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(.white.opacity(0.15))
-                        Capsule().fill(.white.opacity(0.55))
-                            .frame(width: geo.size.width * appState.confirmProgress)
-                    }
-                }
-                .frame(height: 4)
-            }
-
-            if !displayText.isEmpty {
-                HStack {
-                    Spacer()
-                    Button("Copy") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(
-                            text.trimmingCharacters(in: .whitespacesAndNewlines), forType: .string)
-                    }
-                    .controlSize(.small)
-                }
+    private var countdownBar: some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(.white.opacity(0.15))
+            GeometryReader { geo in
+                Capsule().fill(.white.opacity(0.55))
+                    .frame(width: geo.size.width * appState.confirmProgress)
             }
         }
-        .padding(16)
-        .frame(width: 460)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.black.opacity(0.82))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.4), radius: 16, y: 6)
-        )
+        .frame(width: 60, height: 4)
     }
 
     private var cancelButton: some View {
         Button { appState.cancelDictation() } label: {
-            Image(systemName: "xmark")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white.opacity(0.75))
-                .frame(width: 22, height: 22)
-                .background(Circle().fill(.white.opacity(0.14)))
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 15))
+                .foregroundStyle(.white.opacity(0.65))
         }
         .buttonStyle(.plain)
         .help("Cancel")
