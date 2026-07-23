@@ -35,6 +35,7 @@ final class Updater: ObservableObject {
     /// Human-readable last-check time, or nil if never checked.
     var lastCheckDescription: String? {
         guard let date = controller.updater.lastUpdateCheckDate else { return nil }
+        if Date().timeIntervalSince(date) < 60 { return "just now" }
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
         return f.localizedString(for: date, relativeTo: Date())

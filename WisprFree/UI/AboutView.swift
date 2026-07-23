@@ -36,14 +36,16 @@ struct AboutView: View {
                     .onChange(of: autoUpdate) { _, value in
                         updater.automaticallyChecks = value
                     }
-                LabeledContent {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Check for updates")
+                        Text(updater.lastCheckDescription.map { "Last checked \($0)" } ?? "Not checked yet")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
                     Button("Check Now") { updater.checkForUpdates() }
                         .disabled(!updater.canCheck)
-                } label: {
-                    Text("Updates")
-                    if let last = updater.lastCheckDescription {
-                        Text("Last checked \(last)")
-                    }
                 }
             }
 
