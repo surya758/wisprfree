@@ -135,20 +135,35 @@ struct SettingsView: View {
         .frame(width: 212)
         .frame(maxHeight: .infinity)
         .background(SettingsColors.sidebar)
-        // Visible soft fade toward the bottom edge of the sidebar.
+        // Very subtle bluish glow rising from the bottom edge.
         .overlay(alignment: .bottom) {
             LinearGradient(
-                colors: [.clear, .black.opacity(0.35)],
+                colors: [
+                    Color(red: 0.30, green: 0.45, blue: 0.85).opacity(0),
+                    Color(red: 0.30, green: 0.45, blue: 0.85).opacity(0.12),
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 110)
+            .frame(height: 170)
             .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        // Border fades from faint white at the top to a soft blue at the bottom.
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(.white.opacity(0.06), lineWidth: 1)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.06),
+                            .white.opacity(0.05),
+                            Color(red: 0.35, green: 0.5, blue: 0.9).opacity(0.35),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
         )
         .padding([.leading, .top, .bottom], 8)
     }
