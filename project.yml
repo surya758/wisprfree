@@ -12,6 +12,9 @@ packages:
   WhisperKit:
     url: https://github.com/argmaxinc/WhisperKit.git
     from: 1.0.0
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle.git
+    from: 2.6.0
 
 targets:
   WisprFree:
@@ -22,6 +25,7 @@ targets:
     dependencies:
       - package: FluidAudio
       - package: WhisperKit
+      - package: Sparkle
     info:
       path: WisprFree/Info.plist
       properties:
@@ -29,8 +33,13 @@ targets:
         NSMicrophoneUsageDescription: "WisprFree uses the microphone to transcribe your dictation."
         CFBundleDisplayName: WisprFree
         CFBundleIconFile: AppIcon
-        CFBundleShortVersionString: "0.1.2"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "0.1.3"
+        CFBundleVersion: "4"
+        # Sparkle auto-update
+        SUFeedURL: "https://raw.githubusercontent.com/surya758/wisprfree/main/appcast.xml"
+        SUPublicEDKey: "bVKnaQILtCyDQBc8fqsjsm5qjvr8sNRiPEmHWXf/Yu4="
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.suryakant.wisprfree
