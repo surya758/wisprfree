@@ -4,40 +4,46 @@ import ServiceManagement
 // MARK: - Sidebar shell (System Settings-style)
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, modes, hotkeys, models, dictionary, history
+    case general, insights, modes, hotkeys, models, dictionary, history, about
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .general: return "General"
+        case .insights: return "Insights"
         case .modes: return "Modes"
         case .hotkeys: return "Hotkeys"
         case .models: return "Models"
         case .dictionary: return "Dictionary"
         case .history: return "History"
+        case .about: return "About"
         }
     }
 
     var icon: String {
         switch self {
         case .general: return "gearshape.fill"
+        case .insights: return "chart.bar.fill"
         case .modes: return "slider.horizontal.3"
         case .hotkeys: return "keyboard.fill"
         case .models: return "sparkles"
         case .dictionary: return "character.book.closed.fill"
         case .history: return "clock.fill"
+        case .about: return "info.circle.fill"
         }
     }
 
     var iconColor: Color {
         switch self {
         case .general: return .gray
+        case .insights: return .teal
         case .modes: return .green
         case .hotkeys: return .indigo
         case .models: return .purple
         case .dictionary: return .orange
         case .history: return .blue
+        case .about: return .pink
         }
     }
 }
@@ -65,11 +71,13 @@ struct SettingsView: View {
             Group {
                 switch pane ?? .general {
                 case .general: GeneralSettingsView()
+                case .insights: InsightsView()
                 case .modes: ModesSettingsView()
                 case .hotkeys: HotkeySettingsView()
                 case .models: ModelSettingsView()
                 case .dictionary: DictionaryView()
                 case .history: HistoryView()
+                case .about: AboutView()
                 }
             }
             .navigationTitle((pane ?? .general).title)
@@ -123,6 +131,10 @@ struct GeneralSettingsView: View {
 struct ModesSettingsView: View {
     @AppStorage("dictationProfile") private var profile = DictationProfile.casual.rawValue
 
+    private var selectedProfile: DictationProfile {
+        DictationProfile(rawValue: profile) ?? .casual
+    }
+
     var body: some View {
         Form {
             Section {
@@ -144,8 +156,51 @@ struct ModesSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            PromptEditorSection(profile: selectedProfile)
+                .id(selectedProfile)  // reload the editor when the mode changes
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Edit the style instructions sent to Gemini for one mode. Output-format
+/// rules and the dictionary are appended automatically and aren't editable.
+struct PromptEditorSection: View {
+    let profile: DictationProfile
+    @State private var text: String
+    @State private var isCustom: Bool
+
+    init(profile: DictationProfile) {
+        self.profile = profile
+        let custom = AppSettings.current.customPrompt(for: profile)
+        _text = State(initialValue: custom ?? PromptBuilder.defaultStyleRules(profile))
+        _isCustom = State(initialValue: custom != nil)
+    }
+
+    var body: some View {
+        Section {
+            TextEditor(text: $text)
+                .font(.system(.callout, design: .monospaced))
+                .frame(minHeight: 150)
+                .scrollContentBackground(.hidden)
+                .onChange(of: text) { _, newValue in
+                    let isDefault = newValue == PromptBuilder.defaultStyleRules(profile)
+                    AppSettings.setCustomPrompt(isDefault ? nil : newValue, for: profile)
+                    isCustom = !isDefault
+                }
+            if isCustom {
+                Button("Reset to Default") {
+                    text = PromptBuilder.defaultStyleRules(profile)
+                }
+            }
+        } header: {
+            Text("Prompt for \(profile.label)\(isCustom ? " (edited)" : "")")
+        } footer: {
+            Text("Edits save automatically and apply to the next dictation. Output-format rules and the dictionary (Writing mode) are appended automatically.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

@@ -99,6 +99,10 @@ final class DictationPipeline {
                     return
                 }
                 HistoryStore.shared.add(text: text, raw: raw, mode: settings.mode)
+                StatsStore.shared.record(
+                    text: text,
+                    audioSeconds: Double(samples.count) / AudioRecorder.targetSampleRate
+                )
                 AppState.shared.lastResult = text
                 try TextInserter.insert(text)
                 AppState.shared.phase = .idle

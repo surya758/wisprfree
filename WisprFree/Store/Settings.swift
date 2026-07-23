@@ -160,6 +160,26 @@ struct AppSettings {
         defaults.object(forKey: "fallbackToRaw") as? Bool ?? true
     }
 
+    // MARK: Prompt overrides
+
+    /// User-edited style prompt for a mode; nil = use the built-in default.
+    func customPrompt(for profile: DictationProfile) -> String? {
+        let stored = defaults.string(forKey: "customPrompt.\(profile.rawValue)")
+        guard let stored, !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return stored
+    }
+
+    static func setCustomPrompt(_ prompt: String?, for profile: DictationProfile) {
+        let key = "customPrompt.\(profile.rawValue)"
+        if let prompt, !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            UserDefaults.standard.set(prompt, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
     // MARK: Hotkey bindings
 
     var holdBinding: HotkeyBinding { binding(defaultsKey: "holdBinding", fallback: .defaultHold) }

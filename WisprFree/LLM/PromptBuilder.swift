@@ -17,9 +17,15 @@ enum PromptBuilder {
         """
     }
 
-    /// Style-specific instructions. The speaker is a non-native English
+    /// The style rules actually used: the user's in-app edit if present,
+    /// otherwise the built-in default.
+    static func effectiveStyleRules(_ profile: DictationProfile) -> String {
+        AppSettings.current.customPrompt(for: profile) ?? defaultStyleRules(profile)
+    }
+
+    /// Built-in style instructions. The speaker is a non-native English
     /// speaker in every profile; how hard to clean differs.
-    private static func styleRules(_ profile: DictationProfile) -> String {
+    static func defaultStyleRules(_ profile: DictationProfile) -> String {
         switch profile {
         case .casual:
             return """
@@ -56,7 +62,7 @@ enum PromptBuilder {
         You clean up text dictated by a non-native English speaker. The raw \
         transcript comes from speech-to-text.
 
-        \(styleRules(profile))
+        \(effectiveStyleRules(profile))
 
         Always:
         - Spoken punctuation commands ("comma", "new line", "new paragraph") become \
@@ -71,7 +77,7 @@ enum PromptBuilder {
         You transcribe dictation audio from a non-native English speaker, then \
         clean it up in one pass.
 
-        \(styleRules(profile))
+        \(effectiveStyleRules(profile))
 
         Always:
         - Transcribe what is said, then apply the cleanup rules above.
