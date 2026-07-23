@@ -1,5 +1,17 @@
 import SwiftUI
 
+extension View {
+    /// Pointing-hand cursor on hover (macOS 15+), for clickable content.
+    @ViewBuilder
+    func linkCursor() -> some View {
+        if #available(macOS 15.0, *) {
+            self.pointerStyle(.link)
+        } else {
+            self
+        }
+    }
+}
+
 struct HistoryView: View {
     @ObservedObject private var store = HistoryStore.shared
 
@@ -53,15 +65,18 @@ private struct HistoryRow: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 Spacer()
-                if copied {
-                    Label("Copied", systemImage: "checkmark")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                } else if hovered {
-                    Label("Click to copy", systemImage: "doc.on.doc")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                // Fixed-size slot so the hint toggling never shifts layout.
+                ZStack(alignment: .trailing) {
+                    Label("Click to copy", systemImage: "doc.on.doc").opacity(0)
+                    if copied {
+                        Label("Copied", systemImage: "checkmark")
+                            .foregroundStyle(.green)
+                    } else if hovered {
+                        Label("Click to copy", systemImage: "doc.on.doc")
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .font(.caption)
             }
             Text(item.text)
                 .lineLimit(4)
@@ -74,6 +89,7 @@ private struct HistoryRow: View {
                 .fill(hovered ? Color.white.opacity(0.06) : .clear)
         )
         .contentShape(Rectangle())
+        .linkCursor()
         .onHover { inside in
             hoverWork?.cancel()
             if inside {
