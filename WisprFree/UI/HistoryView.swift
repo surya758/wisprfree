@@ -1,13 +1,18 @@
 import SwiftUI
 
 extension View {
-    /// Pointing-hand cursor on hover (macOS 15+), for clickable content.
-    @ViewBuilder
+    /// Pointing-hand cursor over clickable content. Re-applies on every move
+    /// so AppKit's tracking areas can't reset it back to the arrow.
     func linkCursor() -> some View {
-        if #available(macOS 15.0, *) {
-            self.pointerStyle(.link)
-        } else {
-            self
+        onContinuousHover { phase in
+            switch phase {
+            case .active:
+                if NSCursor.current != NSCursor.pointingHand {
+                    NSCursor.pointingHand.set()
+                }
+            case .ended:
+                NSCursor.arrow.set()
+            }
         }
     }
 }
