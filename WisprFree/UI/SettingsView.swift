@@ -68,10 +68,18 @@ enum SettingsColors {
     static let app = Color(red: 32 / 255, green: 34 / 255, blue: 45 / 255)
 }
 
+/// Tracks whether the big hero header is currently scrolled into view, so
+/// the nav bar can show a collapsed title once it scrolls away.
+@MainActor
+final class HeaderScrollModel: ObservableObject {
+    @Published var heroVisible = true
+}
+
 struct SettingsView: View {
     // Visited-pane history drives the back/forward buttons.
     @State private var history: [SettingsPane] = [.general]
     @State private var historyIndex = 0
+    @StateObject private var header = HeaderScrollModel()
 
     private var pane: SettingsPane { history[historyIndex] }
 
@@ -129,15 +137,27 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Fixed header: just the nav pill on an opaque layer; the hero
-            // card lives inside each pane's scroll content.
-            navigationPill
-                .padding(.top, 12)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(SettingsColors.app)
-                .zIndex(1)
+            // Fixed header: nav pill on the leading side; once the hero card
+            // scrolls out of view, a collapsed pane title fades into the
+            // center, like macOS System Settings.
+            ZStack {
+                if !header.heroVisible {
+                    Text(pane.title)
+                        .font(.headline)
+                        .transition(.opacity.combined(with: .offset(y: -6)))
+                }
+                HStack {
+                    navigationPill
+                    Spacer()
+                }
+            }
+            .animation(.easeInOut(duration: 0.22), value: header.heroVisible)
+            .padding(.top, 12)
+            .padding(.horizontal, 22)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity)
+            .background(SettingsColors.app)
+            .zIndex(1)
 
             Group {
                 switch pane {
@@ -154,6 +174,9 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
         }
+        .environmentObject(header)
+        // Reset the collapsed title whenever the pane changes.
+        .onChange(of: pane) { _, _ in header.heroVisible = true }
         // The app background shows through; forms hide their own (darker)
         // scroll background and their grouped cards float on top.
     }
@@ -195,12 +218,19 @@ struct SettingsView: View {
 }
 
 /// Big System Settings-style header: icon, title, and what the pane does.
-/// Placed inside each pane's scroll content so it slides away with it.
+/// Placed inside each pane's scroll content so it slides away with it; when
+/// it fully leaves the viewport the nav bar shows a collapsed title.
 struct PaneHero: View {
     let pane: SettingsPane
+    @EnvironmentObject private var header: HeaderScrollModel
 
     var body: some View {
-        VStack(spacing: 8) {
+        content
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        let hero = VStack(spacing: 8) {
             Image(systemName: pane.icon)
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(.white)
@@ -215,8 +245,16 @@ struct PaneHero: View {
                 .padding(.horizontal, 30)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white.opacity(0.05)))
+        .padding(.top, 4)
+        .padding(.bottom, 16)
+
+        if #available(macOS 15.0, *) {
+            hero.onScrollVisibilityChange(threshold: 0.2) { visible in
+                header.heroVisible = visible
+            }
+        } else {
+            hero
+        }
     }
 }
 
