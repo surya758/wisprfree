@@ -326,6 +326,7 @@ struct PaneHeroSection: View {
 struct GeneralSettingsView: View {
     @AppStorage("mode") private var mode = DictationMode.parakeetGemini.rawValue
     @AppStorage("fallbackToRaw") private var fallbackToRaw = true
+    @AppStorage("insertionMethod") private var insertionMethod = InsertionMethod.paste.rawValue
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -339,6 +340,21 @@ struct GeneralSettingsView: View {
                 }
                 .pickerStyle(.inline)
                 Toggle("Insert raw transcript if the AI model is unavailable", isOn: $fallbackToRaw)
+            }
+
+            Section {
+                Picker("Output", selection: $insertionMethod) {
+                    ForEach(InsertionMethod.allCases) { method in
+                        Text(method.label).tag(method.rawValue)
+                    }
+                }
+                .pickerStyle(.inline)
+            } header: {
+                Text("Output")
+            } footer: {
+                Text("How the result reaches the app you're typing in. “Type characters” avoids the clipboard entirely — best for terminals and clipboard-manager privacy.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("App") {

@@ -17,6 +17,27 @@ enum DictationMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// How the cleaned text lands in the target app.
+enum InsertionMethod: String, CaseIterable, Identifiable {
+    /// Put text on the clipboard and synthesize ⌘V. Fast; touches the clipboard.
+    case paste
+    /// Synthesize the characters directly. No clipboard; works in terminals
+    /// and apps that block ⌘V. Slightly slower for long text.
+    case type
+    /// Don't insert — just leave the result on the clipboard to place yourself.
+    case copyOnly
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .paste: return "Paste (⌘V) — fast"
+        case .type: return "Type characters — no clipboard, works anywhere"
+        case .copyOnly: return "Copy only — don't auto-insert"
+        }
+    }
+}
+
 /// What the dictation is *for* — controls how aggressively Gemini cleans the
 /// transcript and whether the name dictionary is applied.
 enum DictationProfile: String, CaseIterable, Identifiable {
@@ -192,6 +213,10 @@ struct AppSettings {
     /// Fall back to inserting the raw Parakeet transcript when Gemini fails.
     var fallbackToRaw: Bool {
         defaults.object(forKey: "fallbackToRaw") as? Bool ?? true
+    }
+
+    var insertionMethod: InsertionMethod {
+        InsertionMethod(rawValue: defaults.string(forKey: "insertionMethod") ?? "") ?? .paste
     }
 
     // MARK: Prompt overrides
