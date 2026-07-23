@@ -517,7 +517,7 @@ struct ModelSettingsView: View {
             }
 
             Section("Vertex AI") {
-                TextField("GCP project", text: $gcpProject)
+                TextField("GCP project", text: $gcpProject, prompt: Text("your-gcp-project-id"))
                 TextField("Location", text: $gcpLocation)
                 Text("Uses your gcloud Application Default Credentials (`gcloud auth application-default login`).")
                     .font(.caption)
