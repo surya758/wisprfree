@@ -2,7 +2,7 @@
 
 **Talk to your Mac. Get back clean, polished text — in any app, in your voice, with your characters' names spelled right.**
 
-WisprFree is a free, open, menu-bar dictation app for macOS. It was born out of a specific frustration: dictation tools transcribe *exactly* what you say — every "um", every false start, every pause — and mangle names they've never heard ("Lin Ming" becomes "Lynn Ming" on a good day). If English isn't your first language, or you write fiction full of pinyin names, raw speech-to-text is barely usable.
+WisprFree is a free, open, menu-bar dictation app for macOS. It was born out of a specific frustration: dictation tools transcribe *exactly* what you say — every "um", every false start, every pause — and mangle any name they haven't heard before. If English isn't your first language, or you write fiction full of invented names, raw speech-to-text is barely usable.
 
 So WisprFree does it in two steps: a **local speech model** hears you (fast, private, free), then an **LLM cleans it up** — grammar fixed, fillers gone, your glossary of names applied — and the result is typed straight into whatever app your cursor is in.
 
@@ -43,7 +43,7 @@ API keys live in your **macOS Keychain**, never in a config file. No provider co
 
 Every mode's prompt is **editable in-app** (Settings → Modes), so you can reshape any of them into whatever you need.
 
-**📖 Dictionary** — teach it your world. Add character and place names ("Lin Ming", "Xiao Yan"), optionally with common mishearings, and the cleanup model corrects them in context.
+**📖 Dictionary** — teach it your world. Add character and place names, optionally with their common mishearings, and the cleanup model corrects them in context.
 
 **📊 Insights** — words dictated today, your streak, and how much typing time you've saved.
 

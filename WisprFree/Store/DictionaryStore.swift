@@ -2,9 +2,9 @@ import Foundation
 
 struct DictionaryEntry: Codable, Identifiable, Equatable {
     var id = UUID()
-    /// The correct spelling, e.g. "Lin Ming".
+    /// The correct spelling of the name or term.
     var term: String
-    /// Optional comma-separated mishearings, e.g. "Lynn Ming, Lin Min".
+    /// Optional comma-separated common mishearings.
     var hint: String = ""
 }
 

@@ -12,10 +12,10 @@ struct DictionaryView: View {
 
             Table(store.entries, selection: $selection) {
                 TableColumn("Correct spelling") { entry in
-                    TextField("Lin Ming", text: binding(for: entry.id, keyPath: \.term))
+                    TextField("Name or term", text: binding(for: entry.id, keyPath: \.term))
                 }
                 TableColumn("Often misheard as (optional)") { entry in
-                    TextField("Lynn Ming, Lin Min", text: binding(for: entry.id, keyPath: \.hint))
+                    TextField("Common mishearings, comma-separated", text: binding(for: entry.id, keyPath: \.hint))
                 }
             }
 
