@@ -14,8 +14,13 @@ final class RecordingOverlayController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] phase in
                 switch phase {
-                case .recording, .processing, .confirming: self?.show()
-                default: self?.hide()
+                case .recording, .processing, .confirming:
+                    AppState.shared.overlayPhase = phase
+                    self?.show()
+                default:
+                    // Keep overlayPhase at its last active value so the fade-out
+                    // doesn't flash the recording pill.
+                    self?.hide()
                 }
             }
     }
@@ -95,7 +100,7 @@ struct RecordingOverlayView: View {
 
     private var showTextBox: Bool {
         // Only for live transcription — the grace window uses the pill alone.
-        appState.phase == .recording && AppSettings.current.liveTranscription
+        appState.overlayPhase == .recording && AppSettings.current.liveTranscription
     }
 
     var body: some View {
@@ -153,7 +158,7 @@ struct ControlPill: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            switch appState.phase {
+            switch appState.overlayPhase {
             case .processing:
                 ProgressView().controlSize(.small).tint(.white).colorScheme(.dark)
                 WaveformBars(level: 0)

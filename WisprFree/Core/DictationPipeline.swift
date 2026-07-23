@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import SwiftUI
 
 /// Orchestrates one dictation: record → transcribe → clean up → insert.
 @MainActor
@@ -79,14 +80,11 @@ final class DictationPipeline {
         AppState.shared.pendingText = text
         AppState.shared.confirmProgress = 1
         AppState.shared.phase = .confirming
-
-        let tick = 0.05
-        let steps = max(1, Int((delay / tick).rounded()))
-        for i in 0...steps {
-            if Task.isCancelled { return false }
-            AppState.shared.confirmProgress = 1 - Double(i) / Double(steps)
-            try? await Task.sleep(for: .seconds(tick))
+        // Let SwiftUI drain the bar smoothly over the whole window in one pass.
+        withAnimation(.linear(duration: delay)) {
+            AppState.shared.confirmProgress = 0
         }
+        try? await Task.sleep(for: .seconds(delay))
         return !Task.isCancelled
     }
 

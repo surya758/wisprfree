@@ -72,6 +72,9 @@ final class AppState: ObservableObject {
     }
 
     @Published var phase: Phase = .idle
+    /// The phase the overlay renders — held at its last active value while the
+    /// overlay fades out, so it doesn't flash the recording look on idle.
+    @Published var overlayPhase: Phase = .idle
     @Published var audioLevel: Float = 0
     /// Interim transcription shown in the overlay while speaking (live mode).
     @Published var interimText: String = ""
