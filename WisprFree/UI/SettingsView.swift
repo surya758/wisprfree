@@ -100,11 +100,16 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Opaque header layer: scrolled form cards must never paint over
+            // the pane title.
             Text(pane.title)
                 .font(.title2.bold())
                 .padding(.top, 22)
                 .padding(.leading, 26)
-                .padding(.bottom, 2)
+                .padding(.bottom, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(SettingsColors.app)
+                .zIndex(1)
             Group {
                 switch pane {
                 case .general: GeneralSettingsView()
@@ -118,6 +123,7 @@ struct SettingsView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         }
         // The app background shows through; forms hide their own (darker)
         // scroll background and their grouped cards float on top.
