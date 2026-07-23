@@ -84,6 +84,7 @@ final class AppState: ObservableObject {
         // into other apps) can't work without it, so waiting until first
         // insert would leave the hotkeys silently dead.
         TextInserter.ensureAccessibility()
+        _ = Updater.shared  // start Sparkle's scheduled update checks
         hotkeys = HotkeyManager(pipeline: pipeline)
         overlay = RecordingOverlayController(appState: self)
         // Warm up the local speech model in the background so the first
@@ -124,6 +125,7 @@ struct MenuContent: View {
             MainWindowController.shared.show()
         }
         .keyboardShortcut(",")
+        CheckForUpdatesButton()
         Divider()
         Button("Quit WisprFree") { NSApp.terminate(nil) }
             .keyboardShortcut("q")

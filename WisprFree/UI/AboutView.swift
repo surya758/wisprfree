@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct AboutView: View {
+    @ObservedObject private var updater = Updater.shared
+    @State private var autoUpdate = Updater.shared.automaticallyChecks
+
     private var version: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -26,6 +29,22 @@ struct AboutView: View {
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            Section("Software Update") {
+                Toggle("Automatically check for updates", isOn: $autoUpdate)
+                    .onChange(of: autoUpdate) { _, value in
+                        updater.automaticallyChecks = value
+                    }
+                LabeledContent {
+                    Button("Check Now") { updater.checkForUpdates() }
+                        .disabled(!updater.canCheck)
+                } label: {
+                    Text("Updates")
+                    if let last = updater.lastCheckDescription {
+                        Text("Last checked \(last)")
+                    }
+                }
             }
 
             Section("How it works") {
