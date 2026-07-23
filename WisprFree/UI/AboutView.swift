@@ -53,5 +53,6 @@ struct AboutView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 }

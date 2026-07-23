@@ -37,6 +37,7 @@ struct InsightsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 
     private func formatted(_ number: Int) -> String {

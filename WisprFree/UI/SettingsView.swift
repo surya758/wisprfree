@@ -48,11 +48,30 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 }
 
+/// User-specified palette: floating sidebar panel over the app background.
+enum SettingsColors {
+    static let sidebar = Color(red: 27 / 255, green: 29 / 255, blue: 37 / 255)
+    static let app = Color(red: 32 / 255, green: 34 / 255, blue: 45 / 255)
+}
+
 struct SettingsView: View {
-    @State private var pane: SettingsPane? = .general
+    @State private var pane: SettingsPane = .general
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
+            sidebar
+            detail
+        }
+        .background(SettingsColors.app)
+        .ignoresSafeArea(.container, edges: .top)
+    }
+
+    /// Floating overlay panel, inset from the window edges; the window's
+    /// traffic lights sit inside its top-left (the window has no title bar).
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Room for the traffic lights, which float over this area.
+            Color.clear.frame(height: 52)
             List(SettingsPane.allCases, selection: $pane) { pane in
                 Label {
                     Text(pane.title)
@@ -66,11 +85,28 @@ struct SettingsView: View {
                 .tag(pane)
             }
             .listStyle(.sidebar)
-            .toolbar(removing: .sidebarToggle)
-            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 220)
-        } detail: {
+            .scrollContentBackground(.hidden)
+        }
+        .frame(width: 212)
+        .frame(maxHeight: .infinity)
+        .background(SettingsColors.sidebar)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(.white.opacity(0.06), lineWidth: 1)
+        )
+        .padding([.leading, .top, .bottom], 12)
+    }
+
+    private var detail: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(pane.title)
+                .font(.title2.bold())
+                .padding(.top, 22)
+                .padding(.leading, 26)
+                .padding(.bottom, 2)
             Group {
-                switch pane ?? .general {
+                switch pane {
                 case .general: GeneralSettingsView()
                 case .insights: InsightsView()
                 case .modes: ModesSettingsView()
@@ -81,8 +117,10 @@ struct SettingsView: View {
                 case .about: AboutView()
                 }
             }
-            .navigationTitle((pane ?? .general).title)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        // The app background shows through; forms hide their own (darker)
+        // scroll background and their grouped cards float on top.
     }
 }
 
@@ -123,6 +161,7 @@ struct GeneralSettingsView: View {
             PermissionsSection()
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 }
 
@@ -161,6 +200,7 @@ struct ModesSettingsView: View {
                 .id(selectedProfile)  // reload the editor when the mode changes
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 }
 
@@ -256,6 +296,7 @@ struct HotkeySettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 
     private var usesFn: Bool {
@@ -491,6 +532,7 @@ struct ModelSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 }
 
