@@ -228,6 +228,11 @@ struct AppSettings {
         defaults.object(forKey: "soundEnabled") as? Bool ?? true
     }
 
+    /// Show interim transcription in the overlay while speaking. Off by default.
+    var liveTranscription: Bool {
+        defaults.object(forKey: "liveTranscription") as? Bool ?? false
+    }
+
     // MARK: Prompt overrides
 
     /// User-edited style prompt for a mode; nil = use the built-in default.

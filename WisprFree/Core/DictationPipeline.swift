@@ -8,6 +8,7 @@ final class DictationPipeline {
     private let stt = SttRouter()
     private var processing = false
     private var processingTask: Task<Void, Never>?
+    private var liveTask: Task<Void, Never>?
 
     /// True while recording or transcribing — used to decide whether the
     /// cancel key should be captured.
@@ -31,10 +32,38 @@ final class DictationPipeline {
             _ = recorder.stop()
             AppState.shared.audioLevel = 0
         }
+        stopLivePreview()
         processingTask?.cancel()
         processingTask = nil
         processing = false
         AppState.shared.phase = .idle
+    }
+
+    // MARK: Live preview
+
+    /// While recording, periodically re-transcribe the buffer so far with the
+    /// local model and show it in the overlay. Cheap because Parakeet runs at
+    /// ~100× realtime; the final transcription still happens on stop.
+    private func startLivePreview() {
+        AppState.shared.interimText = ""
+        liveTask = Task { [stt, recorder] in
+            while !Task.isCancelled, recorder.isRecording {
+                try? await Task.sleep(for: .milliseconds(900))
+                guard !Task.isCancelled, recorder.isRecording else { break }
+                let snap = recorder.snapshot()
+                guard snap.count > Int(AudioRecorder.targetSampleRate * 0.3) else { continue }
+                if let text = try? await stt.transcribe(snap),
+                   !text.isEmpty, !Task.isCancelled, recorder.isRecording {
+                    AppState.shared.interimText = text
+                }
+            }
+        }
+    }
+
+    private func stopLivePreview() {
+        liveTask?.cancel()
+        liveTask = nil
+        AppState.shared.interimText = ""
     }
 
     func startRecording() {
@@ -51,6 +80,7 @@ final class DictationPipeline {
                 try recorder.start()
                 AppState.shared.phase = .recording
                 Sound.playStart()
+                if AppSettings.current.liveTranscription { startLivePreview() }
             } catch {
                 fail(error.localizedDescription)
             }
@@ -60,6 +90,7 @@ final class DictationPipeline {
     func stopAndProcess() {
         guard recorder.isRecording else { return }
         let samples = recorder.stop()
+        stopLivePreview()
         AppState.shared.audioLevel = 0
         // Ignore accidental taps (< 0.4 s of audio).
         guard samples.count > Int(AudioRecorder.targetSampleRate * 0.4) else {

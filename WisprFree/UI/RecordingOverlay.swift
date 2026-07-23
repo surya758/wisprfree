@@ -22,8 +22,12 @@ final class RecordingOverlayController {
 
     private func show() {
         if panel == nil { panel = makePanel() }
-        guard let panel, !panel.isVisible else { return }
+        guard let panel else { return }
+        // Wider pill when live transcription can fill it with text.
+        let width: CGFloat = AppSettings.current.liveTranscription ? 460 : 250
+        panel.setContentSize(NSSize(width: width, height: 40))
         position(panel)
+        guard !panel.isVisible else { return }
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
@@ -87,7 +91,17 @@ struct RecordingPill: View {
                 Circle()
                     .fill(.red)
                     .frame(width: 8, height: 8)
-                WaveformBars(level: appState.audioLevel)
+                if appState.interimText.isEmpty {
+                    WaveformBars(level: appState.audioLevel)
+                } else {
+                    // Live transcript: show the latest words (truncate the head).
+                    Text(appState.interimText)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 Button {
                     appState.cancelDictation()
                 } label: {

@@ -52,6 +52,13 @@ final class AudioRecorder {
         isRecording = true
     }
 
+    /// A thread-safe copy of everything captured so far (for live preview).
+    func snapshot() -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        return samples
+    }
+
     /// Stops the tap and returns everything captured since start().
     func stop() -> [Float] {
         guard isRecording else { return [] }

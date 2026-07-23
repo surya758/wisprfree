@@ -70,6 +70,8 @@ final class AppState: ObservableObject {
 
     @Published var phase: Phase = .idle
     @Published var audioLevel: Float = 0
+    /// Interim transcription shown in the overlay while speaking (live mode).
+    @Published var interimText: String = ""
     /// Fraction [0,1] of a model download in flight; nil when none.
     @Published var downloadProgress: Double?
     @Published var lastError: String?

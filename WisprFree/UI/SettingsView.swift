@@ -327,6 +327,7 @@ struct GeneralSettingsView: View {
     @AppStorage("mode") private var mode = DictationMode.parakeetGemini.rawValue
     @AppStorage("fallbackToRaw") private var fallbackToRaw = true
     @AppStorage("insertionMethod") private var insertionMethod = InsertionMethod.paste.rawValue
+    @AppStorage("liveTranscription") private var liveTranscription = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -340,6 +341,7 @@ struct GeneralSettingsView: View {
                 }
                 .pickerStyle(.inline)
                 Toggle("Insert raw transcript if the AI model is unavailable", isOn: $fallbackToRaw)
+                Toggle("Show live transcription while speaking", isOn: $liveTranscription)
             }
 
             MicrophoneSection()
