@@ -4,24 +4,15 @@ struct HistoryView: View {
     @ObservedObject private var store = HistoryStore.shared
 
     var body: some View {
-        List {
-            // Hero lives inside the list so it scrolls away like other panes.
-            PaneHero(pane: .history)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-
+        Group {
             if store.items.isEmpty {
-                Section {
-                    Text("No dictations yet. Hold your dictation key and speak.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 24)
-                        .listRowBackground(Color.clear)
-                }
+                ContentUnavailableView(
+                    "No dictations yet",
+                    systemImage: "mic",
+                    description: Text("Hold your dictation key and speak.")
+                )
             } else {
-                Section {
+                List {
                     ForEach(store.items) { item in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
@@ -44,13 +35,13 @@ struct HistoryView: View {
                         }
                         .padding(.vertical, 2)
                     }
+                    Section {
+                        Button("Clear History", role: .destructive) { store.clear() }
+                    }
                 }
-                Section {
-                    Button("Clear History", role: .destructive) { store.clear() }
-                }
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             }
         }
-        .listStyle(.inset)
-        .scrollContentBackground(.hidden)
     }
 }

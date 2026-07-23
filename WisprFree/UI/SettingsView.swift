@@ -48,6 +48,10 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Whether this pane shows the big scrolling hero card. Dictionary and
+    /// History skip it and just keep the title centered in the nav bar.
+    var showsHero: Bool { self != .dictionary && self != .history }
+
     /// Subtitle for the hero header card.
     var blurb: String {
         switch self {
@@ -77,6 +81,9 @@ final class HeaderScrollModel: ObservableObject {
 }
 
 struct SettingsView: View {
+    /// Coordinate space the hero measures its position within.
+    static let contentSpace = "settingsContent"
+
     // Visited-pane history drives the back/forward buttons.
     @State private var history: [SettingsPane] = [.general]
     @State private var historyIndex = 0
@@ -142,7 +149,9 @@ struct SettingsView: View {
             // scrolls out of view, a collapsed pane title fades into the
             // center, like macOS System Settings.
             ZStack {
-                if !header.heroVisible {
+                // Panes without a hero (Dictionary, History) show the title
+                // permanently; hero panes reveal it once scrolled past.
+                if !pane.showsHero || !header.heroVisible {
                     Text(pane.title)
                         .font(.headline)
                         .transition(.opacity.combined(with: .offset(y: -6)))
@@ -174,6 +183,14 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
+            .coordinateSpace(name: Self.contentSpace)
+            .onPreferenceChange(HeroMaxYKey.self) { maxY in
+                // Collapse the title once the hero's bottom nears the top.
+                let visible = maxY > 16
+                Task { @MainActor in
+                    if header.heroVisible != visible { header.heroVisible = visible }
+                }
+            }
         }
         .environmentObject(header)
         // Reset the collapsed title whenever the pane changes.
@@ -218,20 +235,25 @@ struct SettingsView: View {
     }
 }
 
+/// Reports the hero's bottom edge within the detail content coordinate space,
+/// so the shell can collapse the title once the hero scrolls off the top.
+/// Default is very negative so that when the hero row is recycled off-screen
+/// the title stays collapsed (max-reduce keeps the real value when present).
+struct HeroMaxYKey: PreferenceKey {
+    static let defaultValue: CGFloat = -.greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 /// Big System Settings-style header: icon, title, and what the pane does.
 /// Placed inside each pane's scroll content so it slides away with it; when
 /// it fully leaves the viewport the nav bar shows a collapsed title.
 struct PaneHero: View {
     let pane: SettingsPane
-    @EnvironmentObject private var header: HeaderScrollModel
 
     var body: some View {
-        content
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        let hero = VStack(spacing: 8) {
+        VStack(spacing: 8) {
             Image(systemName: pane.icon)
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(.white)
@@ -248,14 +270,14 @@ struct PaneHero: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
         .padding(.bottom, 16)
-
-        if #available(macOS 15.0, *) {
-            hero.onScrollVisibilityChange(threshold: 0.2) { visible in
-                header.heroVisible = visible
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: HeroMaxYKey.self,
+                    value: geo.frame(in: .named(SettingsView.contentSpace)).maxY
+                )
             }
-        } else {
-            hero
-        }
+        )
     }
 }
 

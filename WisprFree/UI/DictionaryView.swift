@@ -2,63 +2,57 @@ import SwiftUI
 
 struct DictionaryView: View {
     @ObservedObject private var store = DictionaryStore.shared
-    @State private var hoveredID: UUID?
+    @State private var selection: Set<UUID> = []
 
     var body: some View {
-        Form {
-            PaneHeroSection(pane: .dictionary)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Names and terms the AI should always spell correctly. Applied only in Writing mode.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
 
-            Section {
-                if store.entries.isEmpty {
-                    Text("No terms yet. Add names the AI should always spell correctly.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 4)
+            Table(store.entries, selection: $selection) {
+                TableColumn("Correct spelling") { entry in
+                    TextField("Name or term", text: binding(for: entry.id, keyPath: \.term))
                 }
-                ForEach($store.entries) { $entry in
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            TextField("Name or term", text: $entry.term)
-                                .textFieldStyle(.plain)
-                            TextField("Common mishearings, comma-separated (optional)", text: $entry.hint)
-                                .textFieldStyle(.plain)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                        Button {
-                            store.entries.removeAll { $0.id == entry.id }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Delete")
-                        .opacity(hoveredID == entry.id ? 1 : 0)
-                        .allowsHitTesting(hoveredID == entry.id)
-                    }
-                    .contentShape(Rectangle())
-                    .onHover { inside in
-                        if inside { hoveredID = entry.id }
-                        else if hoveredID == entry.id { hoveredID = nil }
-                    }
+                TableColumn("Often misheard as (optional)") { entry in
+                    TextField("Comma-separated", text: binding(for: entry.id, keyPath: \.hint))
                 }
-                .animation(.easeInOut(duration: 0.12), value: hoveredID)
+            }
+            .scrollContentBackground(.hidden)
 
+            HStack(spacing: 6) {
                 Button {
                     store.entries.append(DictionaryEntry(term: ""))
                 } label: {
-                    Label("Add Term", systemImage: "plus")
+                    Image(systemName: "plus")
                 }
-            } header: {
-                Text("Terms")
-            } footer: {
-                Text("Hover a row and click ✕ to remove it. Applied only in Writing mode.")
+                Button {
+                    store.entries.removeAll { selection.contains($0.id) }
+                    selection.removeAll()
+                } label: {
+                    Image(systemName: "minus")
+                }
+                .disabled(selection.isEmpty)
+                Spacer()
+                Text("\(store.entries.count) term\(store.entries.count == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+        .padding(20)
+    }
+
+    private func binding(for id: UUID, keyPath: WritableKeyPath<DictionaryEntry, String>) -> Binding<String> {
+        Binding(
+            get: {
+                store.entries.first(where: { $0.id == id })?[keyPath: keyPath] ?? ""
+            },
+            set: { newValue in
+                if let index = store.entries.firstIndex(where: { $0.id == id }) {
+                    store.entries[index][keyPath: keyPath] = newValue
+                }
+            }
+        )
     }
 }
