@@ -34,16 +34,17 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Muted, desaturated tints — softer than the system-color equivalents.
     var iconColor: Color {
         switch self {
-        case .general: return .gray
-        case .insights: return .teal
-        case .modes: return .green
-        case .hotkeys: return .indigo
-        case .models: return .purple
-        case .dictionary: return .orange
-        case .history: return .blue
-        case .about: return .pink
+        case .general: return Color(red: 0.46, green: 0.48, blue: 0.53)
+        case .insights: return Color(red: 0.30, green: 0.55, blue: 0.57)
+        case .modes: return Color(red: 0.36, green: 0.54, blue: 0.43)
+        case .hotkeys: return Color(red: 0.42, green: 0.44, blue: 0.62)
+        case .models: return Color(red: 0.52, green: 0.44, blue: 0.62)
+        case .dictionary: return Color(red: 0.72, green: 0.53, blue: 0.36)
+        case .history: return Color(red: 0.37, green: 0.49, blue: 0.65)
+        case .about: return Color(red: 0.66, green: 0.44, blue: 0.51)
         }
     }
 
@@ -117,7 +118,7 @@ struct SettingsView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 22, height: 22)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(pane.iconColor.gradient))
+                        .background(RoundedRectangle(cornerRadius: 5).fill(pane.iconColor))
                 }
                 .tag(pane)
             }
@@ -235,7 +236,7 @@ struct PaneHero: View {
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
-                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(pane.iconColor.gradient))
+                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(pane.iconColor))
             Text(pane.title)
                 .font(.title.bold())
             Text(pane.blurb)
