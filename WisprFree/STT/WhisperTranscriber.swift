@@ -13,7 +13,13 @@ actor WhisperTranscriber: SpeechToText {
 
     func prepare() async throws {
         guard whisper == nil else { return }
-        let config = WhisperKitConfig(model: model)
+        // Download first (skips already-cached files) so we get real progress,
+        // then load from the resolved folder.
+        let folder = try await WhisperKit.download(
+            variant: model,
+            progressCallback: { progress in SttProgress.report(progress.fractionCompleted) }
+        )
+        let config = WhisperKitConfig(model: model, modelFolder: folder.path)
         whisper = try await WhisperKit(config)
     }
 

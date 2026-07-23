@@ -66,7 +66,8 @@ struct SettingsView: View {
                 .tag(pane)
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(190)
+            .toolbar(removing: .sidebarToggle)
+            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 220)
         } detail: {
             Group {
                 switch pane ?? .general {
@@ -82,7 +83,6 @@ struct SettingsView: View {
             }
             .navigationTitle((pane ?? .general).title)
         }
-        .frame(width: 700, height: 480)
     }
 }
 
@@ -445,11 +445,20 @@ struct ModelSettingsView: View {
                     Task { await appState.pipeline.warmUp() }
                 }
                 if appState.phase == .loadingModel {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text("Downloading / loading model… (first download can be a few hundred MB)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 10) {
+                        if let progress = appState.downloadProgress {
+                            ProgressView(value: progress)
+                                .progressViewStyle(.linear)
+                            Text("\(Int(progress * 100))%")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 36, alignment: .trailing)
+                        } else {
+                            ProgressView().controlSize(.small)
+                            Text("Loading model…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             } header: {

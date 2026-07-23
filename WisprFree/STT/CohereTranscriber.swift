@@ -21,7 +21,10 @@ actor CohereTranscriber: SpeechToText {
         }
         if !missing.isEmpty {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            try await ModelHub.download(.cohereTranscribeCoreml, to: dir)
+            try await ModelHub.download(
+                .cohereTranscribeCoreml, to: dir,
+                progressHandler: { progress in SttProgress.report(progress.fractionCompleted) }
+            )
         }
         models = try await CoherePipeline.loadModels(
             encoderDir: dir, decoderDir: dir, vocabDir: dir)

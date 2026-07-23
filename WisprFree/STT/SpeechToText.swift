@@ -7,6 +7,13 @@ protocol SpeechToText: Actor {
     func transcribe(_ samples: [Float]) async throws -> String
 }
 
+/// Funnels engine download progress to the UI (nil = no download running).
+enum SttProgress {
+    static func report(_ fraction: Double?) {
+        Task { @MainActor in AppState.shared.downloadProgress = fraction }
+    }
+}
+
 /// Routes to the engine selected in Settings, rebuilding it when the
 /// selection changes. Dropping the old engine frees its models.
 actor SttRouter {
@@ -28,6 +35,7 @@ actor SttRouter {
             engine = Self.make(id)
             loadedId = id
         }
+        defer { SttProgress.report(nil) }
         try await engine!.prepare()
     }
 

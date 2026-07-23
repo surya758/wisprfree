@@ -17,7 +17,10 @@ actor ParakeetTranscriber: SpeechToText {
 
     func prepare() async throws {
         guard manager == nil else { return }
-        let models = try await AsrModels.downloadAndLoad(version: version)
+        let models = try await AsrModels.downloadAndLoad(
+            version: version,
+            progressHandler: { progress in SttProgress.report(progress.fractionCompleted) }
+        )
         let asr = AsrManager(config: .default)
         try await asr.loadModels(models)
         manager = asr

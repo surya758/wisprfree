@@ -12,11 +12,12 @@ final class MainWindowController {
     func show() {
         if window == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 700, height: 480),
-                styleMask: [.titled, .closable, .miniaturizable],
+                contentRect: NSRect(x: 0, y: 0, width: 720, height: 500),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
             )
+            window.contentMinSize = NSSize(width: 660, height: 440)
             window.title = "WisprFree"
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(
