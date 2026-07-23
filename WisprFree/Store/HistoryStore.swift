@@ -31,6 +31,8 @@ final class HistoryStore: ObservableObject {
     }
 
     func add(text: String, raw: String, mode: DictationMode) {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         items.insert(HistoryItem(date: Date(), text: text, raw: raw, mode: mode.label), at: 0)
         if items.count > 50 { items.removeLast(items.count - 50) }
         if let data = try? JSONEncoder().encode(items) {

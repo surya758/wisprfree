@@ -83,7 +83,7 @@ private struct HistoryRow: View {
                 }
                 .font(.caption)
             }
-            Text(item.text)
+            Text(item.text.trimmingCharacters(in: .whitespacesAndNewlines))
                 .lineLimit(4)
         }
         .padding(.vertical, 5)
@@ -109,7 +109,8 @@ private struct HistoryRow: View {
         }
         .onTapGesture {
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(item.text, forType: .string)
+            NSPasteboard.general.setString(
+                item.text.trimmingCharacters(in: .whitespacesAndNewlines), forType: .string)
             withAnimation { copied = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                 withAnimation { copied = false }
