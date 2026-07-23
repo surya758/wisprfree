@@ -5,12 +5,25 @@ struct WisprFreeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState = AppState.shared
 
+    /// Brand waveform mark, tinted by the system (template image).
+    private static let menuIcon: NSImage? = {
+        guard let image = NSImage(named: "MenuIcon") else { return nil }
+        image.isTemplate = true
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }()
+
     var body: some Scene {
         MenuBarExtra {
             MenuContent()
                 .environmentObject(appState)
         } label: {
-            Image(systemName: appState.phase.symbolName)
+            // Idle shows the brand mark; active phases show their state symbol.
+            if appState.phase == .idle, let icon = Self.menuIcon {
+                Image(nsImage: icon)
+            } else {
+                Image(systemName: appState.phase.symbolName)
+            }
         }
     }
 }
