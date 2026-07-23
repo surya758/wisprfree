@@ -61,7 +61,8 @@ final class DictationPipeline {
         Task {
             defer { processing = false }
             let settings = AppSettings.current
-            let glossary = DictionaryStore.shared.entries
+            let profile = settings.profile
+            let glossary = profile.usesGlossary ? DictionaryStore.shared.entries : []
             let gemini = GeminiClient(settings: settings)
             var raw = ""
 
@@ -74,6 +75,7 @@ final class DictationPipeline {
                 case .directGemini:
                     text = try await gemini.transcribe(
                         wav: AudioRecorder.wavData(from: samples),
+                        profile: profile,
                         glossary: glossary
                     )
                 case .parakeetGemini:
@@ -83,7 +85,7 @@ final class DictationPipeline {
                         return
                     }
                     do {
-                        text = try await gemini.cleanUp(transcript: raw, glossary: glossary)
+                        text = try await gemini.cleanUp(transcript: raw, profile: profile, glossary: glossary)
                     } catch where settings.fallbackToRaw {
                         // Offline or API failure: better raw text than lost dictation.
                         notify("Gemini unavailable — inserted raw transcript",

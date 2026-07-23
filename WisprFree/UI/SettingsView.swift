@@ -4,13 +4,14 @@ import ServiceManagement
 // MARK: - Sidebar shell (System Settings-style)
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, hotkeys, models, dictionary, history
+    case general, modes, hotkeys, models, dictionary, history
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .general: return "General"
+        case .modes: return "Modes"
         case .hotkeys: return "Hotkeys"
         case .models: return "Models"
         case .dictionary: return "Dictionary"
@@ -21,6 +22,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: return "gearshape.fill"
+        case .modes: return "slider.horizontal.3"
         case .hotkeys: return "keyboard.fill"
         case .models: return "sparkles"
         case .dictionary: return "character.book.closed.fill"
@@ -31,6 +33,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     var iconColor: Color {
         switch self {
         case .general: return .gray
+        case .modes: return .green
         case .hotkeys: return .indigo
         case .models: return .purple
         case .dictionary: return .orange
@@ -62,6 +65,7 @@ struct SettingsView: View {
             Group {
                 switch pane ?? .general {
                 case .general: GeneralSettingsView()
+                case .modes: ModesSettingsView()
                 case .hotkeys: HotkeySettingsView()
                 case .models: ModelSettingsView()
                 case .dictionary: DictionaryView()
@@ -109,6 +113,37 @@ struct GeneralSettingsView: View {
             }
 
             PermissionsSection()
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - Modes (dictation styles)
+
+struct ModesSettingsView: View {
+    @AppStorage("dictationProfile") private var profile = DictationProfile.casual.rawValue
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Mode", selection: $profile) {
+                    ForEach(DictationProfile.allCases) { profile in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(profile.label)
+                            Text(profile.summary).font(.caption).foregroundStyle(.secondary)
+                        }
+                        .tag(profile.rawValue)
+                    }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } header: {
+                Text("What are you dictating?")
+            } footer: {
+                Text("Controls how aggressively Gemini cleans the transcript and whether your name dictionary is applied. Also switchable from the menu bar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

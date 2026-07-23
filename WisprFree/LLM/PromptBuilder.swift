@@ -17,38 +17,68 @@ enum PromptBuilder {
         """
     }
 
-    static func cleanupSystemPrompt(glossary: [DictionaryEntry]) -> String {
-        """
-        You clean up dictated text from a novelist who is a non-native English speaker. \
-        The raw transcript comes from speech-to-text and contains pauses, filler words, \
-        false starts, repeated words, and grammar slips.
+    /// Style-specific instructions. The speaker is a non-native English
+    /// speaker in every profile; how hard to clean differs.
+    private static func styleRules(_ profile: DictationProfile) -> String {
+        switch profile {
+        case .casual:
+            return """
+            The speaker is dictating everyday text — chat messages, quick notes, \
+            searches, short emails. Clean LIGHTLY:
+            - Remove filler words ("um", "uh"), false starts, and stutter repeats.
+            - Fix only clear grammar slips; otherwise keep the speaker's exact \
+            wording, casual tone, and sentence rhythm.
+            - Do NOT formalize, embellish, restructure, or expand anything.
+            """
+        case .writing:
+            return """
+            The speaker is a novelist dictating fiction prose. The raw transcript \
+            contains pauses, filler words, false starts, and grammar slips. Clean \
+            THOROUGHLY:
+            - Fix grammar fully and remove all fillers and false starts.
+            - Preserve the speaker's meaning, tone, and voice. Do NOT add new \
+            content, do NOT summarize, do NOT continue the story.
+            - Keep sentence order; only merge fragments that are clearly one sentence.
+            """
+        case .professional:
+            return """
+            The speaker is dictating professional text — work emails, documents, \
+            reports. Produce clear, well-punctuated, grammatical prose:
+            - Remove fillers and false starts; fix grammar properly.
+            - Tighten wording slightly where dictation rambles, but keep every \
+            point the speaker makes. Do NOT add content or change meaning.
+            """
+        }
+    }
 
-        Rules:
-        - Fix grammar and remove fillers ("um", "uh", "you know") and false starts.
-        - Preserve the speaker's meaning, tone, and voice. Do NOT add new content, \
-        do NOT summarize, do NOT continue the story.
-        - Keep sentence order; only merge fragments that are clearly one sentence.
+    static func cleanupSystemPrompt(profile: DictationProfile, glossary: [DictionaryEntry]) -> String {
+        """
+        You clean up text dictated by a non-native English speaker. The raw \
+        transcript comes from speech-to-text.
+
+        \(styleRules(profile))
+
+        Always:
         - Spoken punctuation commands ("comma", "new line", "new paragraph") become \
         the actual punctuation/formatting.
         - Output ONLY the cleaned text — no preamble, no quotes, no explanations.
-        \(glossarySection(glossary))
+        \(profile.usesGlossary ? glossarySection(glossary) : "")
         """
     }
 
-    static func directSystemPrompt(glossary: [DictionaryEntry]) -> String {
+    static func directSystemPrompt(profile: DictationProfile, glossary: [DictionaryEntry]) -> String {
         """
-        You transcribe dictation audio from a novelist who is a non-native English \
-        speaker, then clean it up in one pass.
+        You transcribe dictation audio from a non-native English speaker, then \
+        clean it up in one pass.
 
-        Rules:
-        - Transcribe what is said, then fix grammar and remove filler words \
-        ("um", "uh"), false starts, and repeated words caused by pauses.
-        - Preserve the speaker's meaning, tone, and voice. Do NOT add new content, \
-        do NOT summarize, do NOT continue the story.
+        \(styleRules(profile))
+
+        Always:
+        - Transcribe what is said, then apply the cleanup rules above.
         - Spoken punctuation commands ("comma", "new line", "new paragraph") become \
         the actual punctuation/formatting.
         - Output ONLY the cleaned transcription — no preamble, no quotes, no timestamps.
-        \(glossarySection(glossary))
+        \(profile.usesGlossary ? glossarySection(glossary) : "")
         """
     }
 }

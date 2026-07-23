@@ -14,17 +14,17 @@ struct GeminiClient {
         return URL(string: "https://\(host)/v1/projects/\(project)/locations/\(location)/publishers/google/models/\(model):generateContent")!
     }
 
-    func cleanUp(transcript: String, glossary: [DictionaryEntry]) async throws -> String {
+    func cleanUp(transcript: String, profile: DictationProfile, glossary: [DictionaryEntry]) async throws -> String {
         let body = requestBody(
-            systemPrompt: PromptBuilder.cleanupSystemPrompt(glossary: glossary),
+            systemPrompt: PromptBuilder.cleanupSystemPrompt(profile: profile, glossary: glossary),
             parts: [["text": transcript]]
         )
         return try await send(body)
     }
 
-    func transcribe(wav: Data, glossary: [DictionaryEntry]) async throws -> String {
+    func transcribe(wav: Data, profile: DictationProfile, glossary: [DictionaryEntry]) async throws -> String {
         let body = requestBody(
-            systemPrompt: PromptBuilder.directSystemPrompt(glossary: glossary),
+            systemPrompt: PromptBuilder.directSystemPrompt(profile: profile, glossary: glossary),
             parts: [
                 ["inlineData": ["mimeType": "audio/wav", "data": wav.base64EncodedString()]],
                 ["text": "Transcribe and clean up this dictation."],

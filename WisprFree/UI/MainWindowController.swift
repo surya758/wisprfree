@@ -13,11 +13,10 @@ final class MainWindowController {
         if window == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 700, height: 480),
-                styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+                styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
-            window.titlebarAppearsTransparent = true
             window.title = "WisprFree"
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(

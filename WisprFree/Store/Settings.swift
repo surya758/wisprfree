@@ -17,6 +17,37 @@ enum DictationMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// What the dictation is *for* — controls how aggressively Gemini cleans the
+/// transcript and whether the name dictionary is applied.
+enum DictationProfile: String, CaseIterable, Identifiable {
+    case casual
+    case writing
+    case professional
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .casual: return "Casual"
+        case .writing: return "Writing"
+        case .professional: return "Professional"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .casual:
+            return "Everyday messages and notes. Light cleanup, keeps your tone and wording. Dictionary off."
+        case .writing:
+            return "Novel prose. Full grammar cleanup and your name dictionary applied."
+        case .professional:
+            return "Emails and documents. Clear, well-punctuated, slightly tightened. Dictionary off."
+        }
+    }
+
+    var usesGlossary: Bool { self == .writing }
+}
+
 /// A recorded global hotkey: a key (possibly a bare modifier like Fn) plus
 /// required modifier flags (e.g. Fn+Space).
 struct HotkeyBinding: Codable, Equatable {
@@ -101,6 +132,10 @@ struct AppSettings {
 
     var mode: DictationMode {
         DictationMode(rawValue: defaults.string(forKey: "mode") ?? "") ?? .parakeetGemini
+    }
+
+    var profile: DictationProfile {
+        DictationProfile(rawValue: defaults.string(forKey: "dictationProfile") ?? "") ?? .casual
     }
 
     var gcpProject: String {

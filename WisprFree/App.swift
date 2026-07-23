@@ -95,9 +95,16 @@ final class AppState: ObservableObject {
 
 struct MenuContent: View {
     @EnvironmentObject var appState: AppState
+    @AppStorage("dictationProfile") private var profile = DictationProfile.casual.rawValue
 
     var body: some View {
         Text(appState.phase.label)
+        Picker("Mode", selection: $profile) {
+            ForEach(DictationProfile.allCases) { profile in
+                Text(profile.label).tag(profile.rawValue)
+            }
+        }
+        .pickerStyle(.inline)
         if let error = appState.lastError, appState.phase == .error {
             Text(error).font(.caption)
         }
